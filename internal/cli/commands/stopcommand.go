@@ -9,6 +9,7 @@ type StopCommand struct {
 }
 
 func (cmd *StopCommand) Execute(args []string) {
+	cmd.Printer.SetClosingStatus()
 	cmd.Printer.Print("Closing console...", cmd.Printer.Service())
 	cmd.Printer.Close()
 }

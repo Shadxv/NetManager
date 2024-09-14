@@ -11,6 +11,7 @@ const (
 type Printer interface {
 	PrintColored(message string, service service.Service, color int)
 	Print(message string, service service.Service)
+	SetClosingStatus()
 	Close()
 	Service() service.Service
 }
