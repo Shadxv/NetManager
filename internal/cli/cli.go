@@ -20,6 +20,7 @@ type Console struct {
 	printChan         chan string
 	mutex             sync.Mutex
 	wg                sync.WaitGroup
+	printHandlerWG    sync.WaitGroup
 	commandManager    manager.CommandManager
 	inputBuffer       string
 	cursorPos         int
@@ -39,6 +40,7 @@ func NewDefaultConsole(mainWaitGroup *sync.WaitGroup) *Console {
 }
 
 func (console *Console) Init() *Console {
+	console.printHandlerWG.Add(1)
 	console.commandManager = *manager.NewCommandManager(console)
 	console.commandManager.Init()
 	return console
@@ -59,12 +61,15 @@ func (console *Console) Close() {
 	if !console.isRunning {
 		return
 	}
-
+	console.printHandlerWG.Done()
 	console.isWaitingForInput = false
-	console.isRunning = false
-	close(console.printChan)
-	keyboard.Close()
-	console.mainWaitGroup.Done()
+	go func() {
+		console.printHandlerWG.Wait()
+		console.isRunning = false
+		close(console.printChan)
+		keyboard.Close()
+		console.mainWaitGroup.Done()
+	}()
 }
 
 func (console *Console) Service() service.Service {
@@ -151,6 +156,7 @@ func (console *Console) printHandler() {
 			fmt.Print("\r\033[K")
 			fmt.Println(msg)
 		}
+		console.printHandlerWG.Done()
 		console.mutex.Unlock()
 	}
 }
@@ -160,10 +166,12 @@ func (console *Console) printPrompt() {
 }
 
 func (console *Console) Print(message string, service service.Service) {
+	console.printHandlerWG.Add(1)
 	console.printChan <- fmt.Sprintf("[%s | %s]: %s", time.Now().Format("15:04:05"), service.Name, message)
 }
 
 func (console *Console) PrintColored(message string, service service.Service, color int) {
+	console.printHandlerWG.Add(1)
 	coloredMessage := fmt.Sprintf("\033[38;5;%dm[%s | %s]: %s\033[0m", color, time.Now().Format("15:04:05"), service.Name, message)
 	console.printChan <- coloredMessage
 }
