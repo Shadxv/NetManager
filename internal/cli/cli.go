@@ -2,6 +2,7 @@ package cli
 
 import (
 	"NetManager/internal/cli/manager"
+	"NetManager/internal/cli/model"
 	"NetManager/internal/service"
 	"fmt"
 	"strings"
@@ -12,6 +13,7 @@ import (
 )
 
 type Console struct {
+	// Prevents app from closing befor it should (console is async)
 	mainWaitGroup     *sync.WaitGroup
 	service           service.Service
 	isRunning         bool
@@ -19,11 +21,13 @@ type Console struct {
 	isClosing         bool
 	printChan         chan string
 	mutex             sync.Mutex
-	wg                sync.WaitGroup
-	printHandlerWG    sync.WaitGroup
-	commandManager    manager.CommandManager
-	inputBuffer       string
-	cursorPos         int
+	// To remove, I think it is useless
+	consoleWaitGroup sync.WaitGroup
+	// Allows printer to print last messages before closing whole app
+	printHandlerWG sync.WaitGroup
+	commandManager manager.CommandManager
+	inputBuffer    string
+	cursorPos      int
 }
 
 func NewDefaultConsole(mainWaitGroup *sync.WaitGroup) *Console {
@@ -40,6 +44,8 @@ func NewDefaultConsole(mainWaitGroup *sync.WaitGroup) *Console {
 }
 
 func (console *Console) Init() *Console {
+	// Adds 1 to wg counter to prevent console (and printer) from closing befor printer is done
+	// Later decremented in Close()
 	console.printHandlerWG.Add(1)
 	console.commandManager = *manager.NewCommandManager(console)
 	console.commandManager.Init()
@@ -47,11 +53,13 @@ func (console *Console) Init() *Console {
 }
 
 func (console *Console) Run() {
-	console.wg.Add(3)
+	//To remove
+	console.consoleWaitGroup.Add(3)
 	go console.handleInput()
 	go console.printHandler()
 
-	console.wg.Wait()
+	//To remove
+	console.consoleWaitGroup.Wait()
 }
 
 func (console *Console) Close() {
@@ -61,8 +69,11 @@ func (console *Console) Close() {
 	if !console.isRunning {
 		return
 	}
+
+	// Explanation is in Init()
 	console.printHandlerWG.Done()
 	console.isWaitingForInput = false
+
 	go func() {
 		console.printHandlerWG.Wait()
 		console.isRunning = false
@@ -77,7 +88,7 @@ func (console *Console) Service() service.Service {
 }
 
 func (console *Console) handleInput() {
-	defer console.wg.Done()
+	defer console.consoleWaitGroup.Done()
 	if err := keyboard.Open(); err != nil {
 		panic(err)
 	}
@@ -92,10 +103,16 @@ func (console *Console) handleInput() {
 		}
 
 		if err != nil {
-			panic(err)
+			console.PrintColored(err.Error(), console.service, model.Red)
 		}
 
 		switch key {
+		// If arrows do not work change terminal to xterm-256color 'screen -T xterm-256color -S netmanager'
+		// There is a problem with it on screen
+		case keyboard.KeyArrowLeft:
+			console.moveCursor(-1)
+		case keyboard.KeyArrowRight:
+			console.moveCursor(1)
 		case keyboard.KeyEnter:
 			console.executeCommand()
 		case keyboard.KeyBackspace, keyboard.KeyBackspace2:
@@ -138,12 +155,22 @@ func (console *Console) handleChar(char rune) {
 }
 
 func (console *Console) redrawInputLine() {
+	fmt.Print("\r\033[K")
 	fmt.Printf("\r> %s", console.inputBuffer)
 	fmt.Printf("\033[%dG", console.cursorPos+3)
 }
 
+func (console *Console) moveCursor(delta int) {
+	newPos := console.cursorPos + delta
+	if newPos < 0 || newPos > len(console.inputBuffer) {
+		return
+	}
+	console.cursorPos = newPos
+	fmt.Printf("\033[%dG", console.cursorPos+3)
+}
+
 func (console *Console) printHandler() {
-	defer console.wg.Done()
+	defer console.consoleWaitGroup.Done()
 	for msg := range console.printChan {
 		console.mutex.Lock()
 		if console.isWaitingForInput {

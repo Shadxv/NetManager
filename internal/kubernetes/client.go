@@ -49,7 +49,7 @@ func (client *Client) Load() {
 	client.config = config
 	client.printer.Print("Loaded config", client.service)
 
-	client.printer.Print("Connecting to Kubernetes Cluster", client.service)
+	client.printer.Print("Connecting to Kubernetes Cluster...", client.service)
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		client.printer.PrintColored("Could not connect to Kubernetes Cluster. Check if Kuberenetes is working!", client.service, model.Red)
