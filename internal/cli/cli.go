@@ -83,6 +83,12 @@ func (console *Console) Close() {
 	}()
 }
 
+func (console *Console) CloseGracefully(message string) {
+	console.SetClosingStatus()
+	console.Print(message, console.Service())
+	console.Close()
+}
+
 func (console *Console) Service() service.Service {
 	return console.service
 }

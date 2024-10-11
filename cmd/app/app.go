@@ -2,12 +2,14 @@ package main
 
 import (
 	"NetManager/internal/cli"
+	"NetManager/internal/config/manager"
 	"NetManager/internal/kubernetes"
 	"sync"
 )
 
 var Console *cli.Console
 var KubernetesClient *kubernetes.Client
+var ConfigManager *manager.ConfigManager
 
 func main() {
 	var wg sync.WaitGroup
@@ -21,12 +23,13 @@ func main() {
 		Console.Run()
 	}()
 
+	ConfigManager = manager.NewConfigManager(Console)
+	ConfigManager.Init()
+
 	KubernetesClient = kubernetes.NewClient(Console)
 	KubernetesClient.Load()
 	if !KubernetesClient.IsLoaded {
-		Console.SetClosingStatus()
-		Console.Print("App is shutting down...", Console.Service())
-		Console.Close()
+		Console.CloseGracefully("App is shutting down...")
 		return
 	}
 

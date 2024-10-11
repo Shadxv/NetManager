@@ -13,5 +13,6 @@ type Printer interface {
 	Print(message string, service service.Service)
 	SetClosingStatus()
 	Close()
+	CloseGracefully(message string)
 	Service() service.Service
 }
