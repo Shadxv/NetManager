@@ -13,7 +13,7 @@ type MainConfig struct {
 
 func NewDefaultMainConfig() *MainConfig {
 	return &MainConfig{
-		Name: "NetManager-Server",
+		Name: "netmanager-service",
 	}
 }
 

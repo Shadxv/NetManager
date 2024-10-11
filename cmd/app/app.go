@@ -26,7 +26,7 @@ func main() {
 	ConfigManager = manager.NewConfigManager(Console)
 	ConfigManager.Init()
 
-	KubernetesClient = kubernetes.NewClient(Console)
+	KubernetesClient = kubernetes.NewClient(Console, ConfigManager)
 	KubernetesClient.Load()
 	if !KubernetesClient.IsLoaded {
 		Console.CloseGracefully("App is shutting down...")

@@ -1,32 +1,39 @@
 package kubernetes
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
 	"NetManager/internal/cli/model"
+	"NetManager/internal/config/manager"
 	"NetManager/internal/service"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 type Client struct {
-	service   service.Service
-	printer   model.Printer
-	config    *rest.Config
-	clientset *kubernetes.Clientset
-	IsLoaded  bool
+	service       service.Service
+	printer       model.Printer
+	configManager *manager.ConfigManager
+	config        *rest.Config
+	clientset     *kubernetes.Clientset
+	namespace     *corev1.Namespace
+	IsLoaded      bool
 }
 
-func NewClient(printer model.Printer) *Client {
+func NewClient(printer model.Printer, configManager *manager.ConfigManager) *Client {
 	return &Client{
 		service: service.Service{
 			Name: "Kubernetes",
 		},
-		printer:  printer,
-		IsLoaded: false,
+		printer:       printer,
+		configManager: configManager,
+		IsLoaded:      false,
 	}
 }
 
@@ -60,6 +67,32 @@ func (client *Client) Load() {
 	client.clientset = clientset
 	client.IsLoaded = true
 	client.printer.Print("Connected to Kubernetes Cluster", client.service)
+
+	client.GetNamespace()
+}
+
+func (client *Client) GetNamespace() {
+	namespaceName := client.configManager.GetMainConfig().Name
+	namespace, err := client.clientset.CoreV1().Namespaces().Get(context.Background(), namespaceName, metav1.GetOptions{})
+
+	if err != nil {
+		client.printer.Print("Creating new namespace...", client.service)
+		newNamespace := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: namespaceName,
+			},
+		}
+		namespace, err = client.clientset.CoreV1().Namespaces().Create(context.Background(), newNamespace, metav1.CreateOptions{})
+		if err != nil {
+			client.printer.PrintColored("Error occured during loading config.", client.service, model.Red)
+			client.printer.PrintColored(err.Error(), client.service, model.Red)
+			client.printer.CloseGracefully("App is shutting down...")
+			return
+		}
+		client.printer.Print("Created new namespace: "+namespaceName, client.service)
+	}
+
+	client.namespace = namespace
 }
 
 // import (
