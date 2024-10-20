@@ -1,6 +1,7 @@
 package model
 
 import (
+	"NetManager/internal/cli/handler"
 	"NetManager/internal/cli/model"
 	"encoding/json"
 	"os"
@@ -24,11 +25,7 @@ func CreateDefaultMainConfig(printer model.Printer) MainConfig {
 	filePath := filepath.Join("config", "config.json")
 
 	err := os.WriteFile(filePath, jsonData, 0644)
-	if err != nil {
-		printer.PrintColored("Error occured during loading config.", printer.Service(), model.Red)
-		printer.PrintColored(err.Error(), printer.Service(), model.Red)
-		printer.CloseGracefully("App is shutting down...")
-	}
+	handler.HandleError(printer, "Error occured during loading config.", err, printer.Service(), true)
 
 	return *config
 }
