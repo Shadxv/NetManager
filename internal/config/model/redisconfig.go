@@ -12,11 +12,9 @@ type RedisConfig struct {
 	DockerImage     string `json:"docker-image"`
 	Version         string `json:"version"`
 	Port            int    `json:"port"`
-	Username        string `json:"username"`
 	Password        string `json:"password"`
 	MaxMemory       string `json:"max-memory"`
 	MaxMemoryPolicy string `json:"max-memory-policy"`
-	Timeout         int    `json:"timeout"`
 }
 
 func NewDefaultRedisConfig() *RedisConfig {
@@ -24,11 +22,9 @@ func NewDefaultRedisConfig() *RedisConfig {
 		DockerImage:     "redis",
 		Version:         "alpine",
 		Port:            6379,
-		Username:        "default",
 		Password:        "",
 		MaxMemory:       "256mb",
 		MaxMemoryPolicy: "allkeys-lru",
-		Timeout:         300,
 	}
 }
 

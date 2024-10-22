@@ -11,13 +11,20 @@ import (
 )
 
 func generateRedisConfigMap(config *model.RedisConfig) *corev1.ConfigMap {
+	data := map[string]string{
+		"maxmemory":        config.MaxMemory,
+		"maxmemory-policy": config.MaxMemoryPolicy,
+	}
+
+	if config.Password != "" {
+		data["requirepass"] = config.Password
+	}
+
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "my-redis-config",
 		},
-		Data: map[string]string{
-			"maxmemory": config.MaxMemory,
-		},
+		Data: data,
 	}
 }
 
@@ -49,7 +56,7 @@ func generateRedisDeployment(config *model.RedisConfig) *appsv1.Deployment {
 							Image: fmt.Sprintf("%s:%s", config.DockerImage, config.Version),
 							Ports: []corev1.ContainerPort{
 								{
-									ContainerPort: 6379,
+									ContainerPort: int32(config.Port),
 								},
 							},
 							Resources: corev1.ResourceRequirements{
