@@ -123,6 +123,8 @@ func (console *Console) handleInput() {
 			console.executeCommand()
 		case keyboard.KeyBackspace, keyboard.KeyBackspace2:
 			console.handleBackspace()
+		case keyboard.KeySpace:
+			console.handleChar(' ')
 		case keyboard.KeyCtrlC:
 			console.Close()
 			return

@@ -21,7 +21,7 @@ func NewCommandManager(printer model.Printer) *CommandManager {
 
 func (commandManager *CommandManager) ExecuteCommand(input string) {
 	var split = strings.Split(input, " ")
-	var commandName = split[0]
+	var commandName = strings.ToLower(split[0])
 	var arguments = split[1:]
 
 	command, exist := commandManager.commands[commandName]
@@ -39,6 +39,9 @@ func (commandManager *CommandManager) registerCommand(command model.Command) {
 
 func (commandManager *CommandManager) registerCommands() {
 	commandManager.registerCommand(&commands.StopCommand{
+		Printer: commandManager.printer,
+	})
+	commandManager.registerCommand(&commands.ServiceCommand{
 		Printer: commandManager.printer,
 	})
 }

@@ -19,3 +19,7 @@ func (cmd *StopCommand) Name() string {
 func (cmd *StopCommand) Description() string {
 	return "Stops app and all services"
 }
+
+func (cmd *StopCommand) Subcommands() map[string]model.Command {
+	return map[string]model.Command{}
+}
