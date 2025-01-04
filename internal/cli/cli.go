@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"NetManager/internal/cli/handler"
 	"NetManager/internal/cli/manager"
 	"NetManager/internal/cli/model"
 	"NetManager/internal/service"
@@ -19,6 +20,7 @@ type Console struct {
 	isRunning         bool
 	isWaitingForInput bool
 	isClosing         bool
+	isPaused          bool
 	printChan         chan string
 	mutex             sync.Mutex
 	// To remove, I think it is useless
@@ -28,6 +30,8 @@ type Console struct {
 	commandManager manager.CommandManager
 	inputBuffer    string
 	cursorPos      int
+	pauseCond      *sync.Cond
+	pauseMutex     sync.Mutex
 }
 
 func NewDefaultConsole(mainWaitGroup *sync.WaitGroup) *Console {
@@ -47,6 +51,7 @@ func (console *Console) Init() *Console {
 	// Adds 1 to wg counter to prevent console (and printer) from closing befor printer is done
 	// Later decremented in Close()
 	console.printHandlerWG.Add(1)
+	console.pauseCond = sync.NewCond(&console.pauseMutex)
 	console.commandManager = *manager.NewCommandManager(console)
 	console.commandManager.Init()
 	return console
@@ -89,6 +94,22 @@ func (console *Console) CloseGracefully(message string) {
 	console.Close()
 }
 
+func (console *Console) Pause() {
+	fmt.Println("Paused")
+	console.isPaused = true
+	console.pauseMutex.Lock()
+	keyboard.Close()
+}
+
+func (console *Console) Resume() {
+	keyboard.Open()
+	console.isPaused = false
+	console.pauseMutex.Unlock()
+	if err := keyboard.Open(); err != nil {
+		handler.HandleError(console, "App is shutting down...", err, console.service, true)
+	}
+}
+
 func (console *Console) Service() service.Service {
 	return console.service
 }
@@ -96,13 +117,17 @@ func (console *Console) Service() service.Service {
 func (console *Console) handleInput() {
 	defer console.consoleWaitGroup.Done()
 	if err := keyboard.Open(); err != nil {
-		panic(err)
+		handler.HandleError(console, "App is shutting down...", err, console.service, true)
 	}
 
 	console.isWaitingForInput = true
 	console.printPrompt()
 
 	for console.isRunning {
+		if console.isPaused {
+			continue
+		}
+
 		char, key, err := keyboard.GetKey()
 		if !console.isRunning {
 			return
@@ -110,6 +135,7 @@ func (console *Console) handleInput() {
 
 		if err != nil {
 			console.PrintColored(err.Error(), console.service, model.Red)
+			continue
 		}
 
 		switch key {
@@ -180,6 +206,9 @@ func (console *Console) moveCursor(delta int) {
 func (console *Console) printHandler() {
 	defer console.consoleWaitGroup.Done()
 	for msg := range console.printChan {
+		if console.isPaused {
+			console.pauseCond.Wait()
+		}
 		console.mutex.Lock()
 		if console.isWaitingForInput {
 			fmt.Print("\r\033[K")

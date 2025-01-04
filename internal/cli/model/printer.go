@@ -14,5 +14,7 @@ type Printer interface {
 	SetClosingStatus()
 	Close()
 	CloseGracefully(message string)
+	Pause()
+	Resume()
 	Service() service.Service
 }

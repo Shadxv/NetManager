@@ -32,7 +32,7 @@ func main() {
 		Console.CloseGracefully("App is shutting down...")
 		return
 	}
-	KubernetesClient.DeployRedis()
+	//KubernetesClient.DeployRedis()
 
 	wg.Wait()
 }

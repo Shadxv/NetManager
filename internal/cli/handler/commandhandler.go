@@ -6,7 +6,16 @@ import (
 )
 
 func HandleHelp(printer model.Printer, command model.Command) {
-	printer.Print("Help", printer.Service())
+	help := "Help for '" + command.Name() + "' - " + command.Description()
+	if len(command.Subcommands()) > 0 {
+		help += "\n\nSubcommands:"
+		for subcmdName := range command.Subcommands() {
+			help += "\n"
+			subcmd := command.Subcommands()[subcmdName]
+			help += "- " + subcmd.Name() + " - " + subcmd.Description()
+		}
+	}
+	printer.Print("\n"+help, printer.Service())
 }
 
 func HandleSubcommand(printer model.Printer, command model.Command, args []string) {
