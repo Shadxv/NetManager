@@ -20,8 +20,7 @@ func (cmd *CreateSubcommand) Execute(args []string) {
 	}
 
 	name := strings.ToLower(args[0])
-	cmd.Printer.Print("Starting service wizard for '"+name+"'...", cmd.Printer.Service())
-	minecraft.SetupWizard(cmd.Printer, name)
+	minecraft.NetServiceWizard(cmd.Printer, name).Run()
 }
 
 func (cmd *CreateSubcommand) Name() string {

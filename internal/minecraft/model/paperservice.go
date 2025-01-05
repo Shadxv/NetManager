@@ -11,9 +11,12 @@ type PaperService struct {
 	minReplicasAmount int
 }
 
-func NewPaperService(name string) *PaperService {
+func NewPaperService(name string, version string, build int, minReplicasAmount int) *PaperService {
 	return &PaperService{
-		name: name,
+		name:              name,
+		version:           version,
+		build:             build,
+		minReplicasAmount: minReplicasAmount,
 	}
 }
 

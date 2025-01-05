@@ -11,9 +11,12 @@ type VelocityService struct {
 	port    int
 }
 
-func NewVelocityService(name string) *VelocityService {
+func NewVelocityService(name string, version string, build int, port int) *VelocityService {
 	return &VelocityService{
-		name: name,
+		name:    name,
+		version: version,
+		build:   build,
+		port:    port,
 	}
 }
 

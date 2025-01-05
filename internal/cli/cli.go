@@ -26,7 +26,7 @@ type Console struct {
 	mutex             sync.RWMutex
 	// To remove, I think it is useless
 	consoleWaitGroup sync.WaitGroup
-	// Allows printer to print last messages before closing whole app
+	// Allows printer to print last messages before closing app
 	printHandlerWG sync.WaitGroup
 	commandManager manager.CommandManager
 	inputBuffer    string

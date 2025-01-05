@@ -14,9 +14,15 @@ func main() {
 		var input string
 		fmt.Print("Hex color: ")
 		_, err := fmt.Scanln(&input)
-		if err != nil {continue}
-
-		PrintColored(input)
+		if err != nil {
+			continue
+		}
+		switch strings.ToLower(input) {
+		case "exit", "stop", "cancel", "e", "s":
+			return
+		default:
+			PrintColored(input)
+		}
 	}
 }
 
