@@ -7,10 +7,11 @@ import (
 
 func SetupWizard(printer model.Printer, serviceName string) {
 	printer.Pause()
-	printer.Print("Paused...", printer.Service())
 	var serviceType string
 	fmt.Print("Service type (paper/velocity): ")
-	fmt.Scan(&serviceType)
-	printer.Print("Resumed...", printer.Service())
+	_, err := fmt.Scan(&serviceType)
+	if err != nil {
+		return
+	}
 	printer.Resume()
 }

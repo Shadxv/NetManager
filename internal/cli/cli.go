@@ -21,8 +21,9 @@ type Console struct {
 	isWaitingForInput bool
 	isClosing         bool
 	isPaused          bool
+	pendingMessages   []string
 	printChan         chan string
-	mutex             sync.Mutex
+	mutex             sync.RWMutex
 	// To remove, I think it is useless
 	consoleWaitGroup sync.WaitGroup
 	// Allows printer to print last messages before closing whole app
@@ -30,8 +31,6 @@ type Console struct {
 	commandManager manager.CommandManager
 	inputBuffer    string
 	cursorPos      int
-	pauseCond      *sync.Cond
-	pauseMutex     sync.Mutex
 }
 
 func NewDefaultConsole(mainWaitGroup *sync.WaitGroup) *Console {
@@ -51,7 +50,6 @@ func (console *Console) Init() *Console {
 	// Adds 1 to wg counter to prevent console (and printer) from closing befor printer is done
 	// Later decremented in Close()
 	console.printHandlerWG.Add(1)
-	console.pauseCond = sync.NewCond(&console.pauseMutex)
 	console.commandManager = *manager.NewCommandManager(console)
 	console.commandManager.Init()
 	return console
@@ -88,26 +86,65 @@ func (console *Console) Close() {
 	}()
 }
 
-func (console *Console) CloseGracefully(message string) {
-	console.SetClosingStatus()
-	console.Print(message, console.Service())
-	console.Close()
-}
-
 func (console *Console) Pause() {
-	fmt.Println("Paused")
+	console.mutex.Lock()
+	defer console.mutex.Unlock()
+
+	if console.isPaused {
+		return
+	}
+
+	if console.isWaitingForInput {
+		fmt.Print("\r\033[K")
+	}
+
 	console.isPaused = true
-	console.pauseMutex.Lock()
+	console.isWaitingForInput = false
+
 	keyboard.Close()
 }
 
 func (console *Console) Resume() {
-	keyboard.Open()
-	console.isPaused = false
-	console.pauseMutex.Unlock()
-	if err := keyboard.Open(); err != nil {
-		handler.HandleError(console, "App is shutting down...", err, console.service, true)
+	console.mutex.Lock()
+	defer console.mutex.Unlock()
+
+	if !console.isPaused {
+		return
 	}
+
+	// Reopen keyboard
+	if err := keyboard.Open(); err != nil {
+		handler.HandleError(console, "Failed to resume console", err, console.service, true)
+		return
+	}
+
+	for _, msg := range console.pendingMessages {
+		console.printHandlerWG.Done()
+		if console.isClosing || !console.isRunning {
+			return
+		}
+
+		if console.isWaitingForInput {
+			fmt.Print("\r\033[K")
+		}
+
+		fmt.Println(msg)
+
+		if console.isWaitingForInput {
+			console.printPrompt()
+		}
+	}
+
+	console.isPaused = false
+	console.isWaitingForInput = true
+
+	console.printPrompt()
+}
+
+func (console *Console) CloseGracefully(message string) {
+	console.SetClosingStatus()
+	console.Print(message, console.Service())
+	console.Close()
 }
 
 func (console *Console) Service() service.Service {
@@ -124,16 +161,29 @@ func (console *Console) handleInput() {
 	console.printPrompt()
 
 	for console.isRunning {
+
+		console.mutex.RLock()
 		if console.isPaused {
+			console.mutex.RUnlock()
 			continue
 		}
+		console.mutex.RUnlock()
 
 		char, key, err := keyboard.GetKey()
-		if !console.isRunning {
+
+		if console.isClosing || !console.isRunning {
 			return
 		}
 
+		console.mutex.RLock()
+		isPaused := console.isPaused
+		console.mutex.RUnlock()
+
 		if err != nil {
+			if isPaused {
+				continue
+			}
+
 			console.PrintColored(err.Error(), console.service, model.Red)
 			continue
 		}
@@ -205,10 +255,19 @@ func (console *Console) moveCursor(delta int) {
 
 func (console *Console) printHandler() {
 	defer console.consoleWaitGroup.Done()
+
 	for msg := range console.printChan {
-		if console.isPaused {
-			console.pauseCond.Wait()
+		console.mutex.RLock()
+		isPaused := console.isPaused
+		console.mutex.RUnlock()
+
+		if isPaused {
+			console.mutex.Lock()
+			console.pendingMessages = append(console.pendingMessages, msg)
+			console.mutex.Unlock()
+			continue
 		}
+
 		console.mutex.Lock()
 		if console.isWaitingForInput {
 			fmt.Print("\r\033[K")
