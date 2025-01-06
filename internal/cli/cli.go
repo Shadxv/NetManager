@@ -14,6 +14,7 @@ import (
 )
 
 type Console struct {
+	CommandManager *manager.CommandManager
 	// Prevents app from closing befor it should (console is async)
 	mainWaitGroup     *sync.WaitGroup
 	service           service.Service
@@ -28,7 +29,6 @@ type Console struct {
 	consoleWaitGroup sync.WaitGroup
 	// Allows printer to print last messages before closing app
 	printHandlerWG sync.WaitGroup
-	commandManager manager.CommandManager
 	inputBuffer    string
 	cursorPos      int
 }
@@ -50,8 +50,8 @@ func (console *Console) Init() *Console {
 	// Adds 1 to wg counter to prevent console (and printer) from closing befor printer is done
 	// Later decremented in Close()
 	console.printHandlerWG.Add(1)
-	console.commandManager = *manager.NewCommandManager(console)
-	console.commandManager.Init()
+	console.CommandManager = manager.NewCommandManager(console)
+	console.CommandManager.Init()
 	return console
 }
 
@@ -218,7 +218,7 @@ func (console *Console) executeCommand() {
 	console.cursorPos = 0
 	fmt.Println()
 	if command != "" {
-		go console.commandManager.ExecuteCommand(command)
+		go console.CommandManager.ExecuteCommand(command)
 	}
 	console.printPrompt()
 

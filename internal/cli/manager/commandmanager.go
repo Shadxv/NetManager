@@ -33,15 +33,12 @@ func (commandManager *CommandManager) ExecuteCommand(input string) {
 	command.Execute(arguments)
 }
 
-func (commandManager *CommandManager) registerCommand(command model.Command) {
+func (commandManager *CommandManager) RegisterCommand(command model.Command) {
 	commandManager.commands[command.Name()] = command
 }
 
 func (commandManager *CommandManager) registerCommands() {
-	commandManager.registerCommand(&commands.StopCommand{
-		Printer: commandManager.printer,
-	})
-	commandManager.registerCommand(&commands.ServiceCommand{
+	commandManager.RegisterCommand(&commands.StopCommand{
 		Printer: commandManager.printer,
 	})
 }

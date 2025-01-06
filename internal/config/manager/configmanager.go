@@ -38,6 +38,10 @@ func (configManager *ConfigManager) Init() {
 func (configManager *ConfigManager) loadFolderStructure() {
 	configManager.loadFolder("config", "")
 	configManager.loadFolder("data", "")
+	configManager.loadFolder("services", "")
+	configManager.loadFolder("templates", "services")
+	configManager.loadFolder("instances", "services")
+	configManager.loadFolder("config", "services")
 }
 
 func (configManager *ConfigManager) loadFolder(name string, path string) {

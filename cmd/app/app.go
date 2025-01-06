@@ -2,14 +2,16 @@ package main
 
 import (
 	"NetManager/internal/cli"
-	"NetManager/internal/config/manager"
+	cmdManager "NetManager/internal/config/manager"
 	"NetManager/internal/kubernetes"
+	serviceManager "NetManager/internal/minecraft/manager"
 	"sync"
 )
 
 var Console *cli.Console
 var KubernetesClient *kubernetes.Client
-var ConfigManager *manager.ConfigManager
+var ConfigManager *cmdManager.ConfigManager
+var ServiceManager *serviceManager.ServiceManager
 
 func main() {
 	var wg sync.WaitGroup
@@ -23,7 +25,7 @@ func main() {
 		Console.Run()
 	}()
 
-	ConfigManager = manager.NewConfigManager(Console)
+	ConfigManager = cmdManager.NewConfigManager(Console)
 	ConfigManager.Init()
 
 	KubernetesClient = kubernetes.NewClient(Console, ConfigManager)
@@ -33,6 +35,13 @@ func main() {
 		return
 	}
 	//KubernetesClient.DeployRedis()
+
+	if &(Console.CommandManager) == nil {
+		Console.CloseGracefully("App is shutting down...")
+		return
+	}
+	ServiceManager = serviceManager.NewServiceManager(Console, Console.CommandManager)
+	ServiceManager.Init()
 
 	wg.Wait()
 }

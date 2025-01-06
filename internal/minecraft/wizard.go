@@ -3,6 +3,7 @@ package minecraft
 import (
 	cliModel "NetManager/internal/cli/model"
 	serviceModel "NetManager/internal/minecraft/model"
+	types "NetManager/internal/minecraft/type"
 	"bufio"
 	"encoding/json"
 	"fmt"
@@ -23,20 +24,26 @@ const (
 
 type ServiceWizard struct {
 	printer         cliModel.Printer
+	serviceManager  types.ServiceManagerBase
 	serviceName     string
 	fetchedVersions []string
 	fetchedBuilds   []int
 	serviceType     string
 }
 
-func NetServiceWizard(printer cliModel.Printer, serviceName string) *ServiceWizard {
+func NetServiceWizard(printer cliModel.Printer, serviceManager types.ServiceManagerBase, serviceName string) *ServiceWizard {
 	return &ServiceWizard{
-		printer:     printer,
-		serviceName: serviceName,
+		printer:        printer,
+		serviceManager: serviceManager,
+		serviceName:    serviceName,
 	}
 }
 
 func (wizard *ServiceWizard) Run() {
+	if wizard.serviceManager.GetAllServices()[wizard.serviceName] != nil {
+		wizard.printer.PrintColored("Service with that name already exists.", wizard.printer.Service(), cliModel.Red)
+		return
+	}
 	wizard.init()
 	wizard.runConfiguration()
 	wizard.close()
@@ -75,7 +82,7 @@ func (wizard *ServiceWizard) runConfiguration() {
 }
 
 func (wizard *ServiceWizard) finalize(service serviceModel.Service) {
-	fmt.Println(service)
+	wizard.serviceManager.RegisterNewService(service)
 }
 
 func (wizard *ServiceWizard) close() {
@@ -159,11 +166,11 @@ func (wizard *ServiceWizard) readVersion(msg string, errMsg string, invalid bool
 		fmt.Println(errMsg)
 	}
 	fmt.Print(msg)
-	input := strings.ToLower(readInput())
+	input := strings.ToUpper(readInput())
 	switch input {
-	case "exit", "stop", "cancel":
+	case "EXIT", "STOP", "CANCEL":
 		return "EXIT"
-	case "latest", "":
+	case "LATEST", "":
 		return wizard.fetchedVersions[len(wizard.fetchedVersions)-1]
 	default:
 		if slices.Contains(wizard.fetchedVersions, input) {
@@ -178,11 +185,11 @@ func (wizard *ServiceWizard) readBuild(msg string, errMsg string, invalid bool) 
 		fmt.Println(errMsg)
 	}
 	fmt.Print(msg)
-	input := strings.ToLower(readInput())
+	input := strings.ToUpper(readInput())
 	switch input {
-	case "exit", "stop", "cancel":
+	case "EXIT", "STOP", "CANCEL":
 		return 0, Canceled
-	case "latest", "":
+	case "LATEST", "":
 		return wizard.fetchedBuilds[len(wizard.fetchedBuilds)-1], Finished
 	default:
 		build, err := strconv.Atoi(input)

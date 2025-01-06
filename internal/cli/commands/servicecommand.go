@@ -4,10 +4,12 @@ import (
 	"NetManager/internal/cli/commands/servicesub"
 	"NetManager/internal/cli/handler"
 	"NetManager/internal/cli/model"
+	types "NetManager/internal/minecraft/type"
 )
 
 type ServiceCommand struct {
-	Printer model.Printer
+	Printer        model.Printer
+	ServiceManager types.ServiceManagerBase
 }
 
 func (cmd *ServiceCommand) Execute(args []string) {
@@ -24,10 +26,17 @@ func (cmd *ServiceCommand) Description() string {
 
 func (cmd *ServiceCommand) Subcommands() map[string]model.Command {
 	createSubcommand := servicesub.CreateSubcommand{
-		Printer: cmd.Printer,
+		Printer:        cmd.Printer,
+		ServiceManager: cmd.ServiceManager,
+	}
+
+	listSubcommand := servicesub.ListSubcommand{
+		Printer:        cmd.Printer,
+		ServiceManager: cmd.ServiceManager,
 	}
 
 	return map[string]model.Command{
 		createSubcommand.Name(): &createSubcommand,
+		listSubcommand.Name():   &listSubcommand,
 	}
 }

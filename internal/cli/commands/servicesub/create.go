@@ -3,11 +3,13 @@ package servicesub
 import (
 	"NetManager/internal/cli/model"
 	"NetManager/internal/minecraft"
+	types "NetManager/internal/minecraft/type"
 	"strings"
 )
 
 type CreateSubcommand struct {
-	Printer model.Printer
+	Printer        model.Printer
+	ServiceManager types.ServiceManagerBase
 }
 
 func (cmd *CreateSubcommand) Execute(args []string) {
@@ -20,7 +22,7 @@ func (cmd *CreateSubcommand) Execute(args []string) {
 	}
 
 	name := strings.ToLower(args[0])
-	minecraft.NetServiceWizard(cmd.Printer, name).Run()
+	minecraft.NetServiceWizard(cmd.Printer, cmd.ServiceManager, name).Run()
 }
 
 func (cmd *CreateSubcommand) Name() string {

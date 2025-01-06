@@ -21,7 +21,7 @@ func NewVelocityService(name string, version string, build int, port int) *Veloc
 }
 
 func (service *VelocityService) GetType() string {
-	return "paper"
+	return VelocityType
 }
 
 func (service *VelocityService) GetName() string {

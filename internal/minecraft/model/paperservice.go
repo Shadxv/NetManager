@@ -21,7 +21,7 @@ func NewPaperService(name string, version string, build int, minReplicasAmount i
 }
 
 func (service *PaperService) GetType() string {
-	return "paper"
+	return PaperType
 }
 
 func (service *PaperService) GetName() string {
