@@ -1,31 +1,34 @@
 package servicesub
 
 import (
-	"NetManager/internal/cli/model"
-	types "NetManager/internal/minecraft/type"
+	"NetManager/external/cli"
+	"NetManager/external/service"
 	"bytes"
 	"github.com/olekukonko/tablewriter"
 )
 
 type ListSubcommand struct {
-	Printer        model.Printer
-	ServiceManager types.ServiceManagerBase
+	Printer        cli.Printer
+	ServiceManager service.Manager
 }
 
 func (cmd *ListSubcommand) Execute(args []string) {
 	buf := new(bytes.Buffer)
 	table := tablewriter.NewWriter(buf)
-	table.SetHeader([]string{"Name", "Type"})
+	table.SetHeader([]string{"Name", "Type", "Status", "Image", "Version"})
 
-	services := cmd.ServiceManager.GetAllServices()
-	for _, service := range services {
+	services := cmd.ServiceManager.Services()
+	for _, s := range services {
 		table.Append([]string{
-			service.GetName(),
-			service.GetType(),
+			s.Name(),
+			s.ServiceType(),
+			s.Status(),
+			s.ImageName(),
+			s.CurrentVersion(),
 		})
 	}
 	table.Render()
-	cmd.Printer.Print("\n" + buf.String(), cmd.Printer.Service())
+	cmd.Printer.Print("\n"+buf.String(), cmd.Printer.Service())
 }
 
 func (cmd *ListSubcommand) Name() string {
@@ -36,6 +39,6 @@ func (cmd *ListSubcommand) Description() string {
 	return "Lists all services"
 }
 
-func (cmd *ListSubcommand) Subcommands() map[string]model.Command {
-	return map[string]model.Command{}
+func (cmd *ListSubcommand) Subcommands() map[string]cli.Command {
+	return map[string]cli.Command{}
 }

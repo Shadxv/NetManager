@@ -1,10 +1,9 @@
 package cli
 
 import (
+	"NetManager/external/cli"
 	"NetManager/internal/cli/handler"
 	"NetManager/internal/cli/manager"
-	"NetManager/internal/cli/model"
-	"NetManager/internal/service"
 	"fmt"
 	"strings"
 	"sync"
@@ -17,7 +16,7 @@ type Console struct {
 	CommandManager *manager.CommandManager
 	// Prevents app from closing befor it should (console is async)
 	mainWaitGroup     *sync.WaitGroup
-	service           service.Service
+	service           cli.Service
 	isRunning         bool
 	isWaitingForInput bool
 	isClosing         bool
@@ -36,7 +35,7 @@ type Console struct {
 func NewDefaultConsole(mainWaitGroup *sync.WaitGroup) *Console {
 	return &Console{
 		mainWaitGroup: mainWaitGroup,
-		service: service.Service{
+		service: cli.Service{
 			Name: "NetManager",
 		},
 		isRunning:   true,
@@ -147,7 +146,7 @@ func (console *Console) CloseGracefully(message string) {
 	console.Close()
 }
 
-func (console *Console) Service() service.Service {
+func (console *Console) Service() cli.Service {
 	return console.service
 }
 
@@ -184,7 +183,7 @@ func (console *Console) handleInput() {
 				continue
 			}
 
-			console.PrintColored(err.Error(), console.service, model.Red)
+			console.PrintColored(err.Error(), console.service, cli.Red)
 			continue
 		}
 
@@ -288,12 +287,12 @@ func (console *Console) printPrompt() {
 	fmt.Print("> ")
 }
 
-func (console *Console) Print(message string, service service.Service) {
+func (console *Console) Print(message string, service cli.Service) {
 	console.printHandlerWG.Add(1)
 	console.printChan <- fmt.Sprintf("[%s | %s]: %s", time.Now().Format("15:04:05"), service.Name, message)
 }
 
-func (console *Console) PrintColored(message string, service service.Service, color int) {
+func (console *Console) PrintColored(message string, service cli.Service, color int) {
 	console.printHandlerWG.Add(1)
 	coloredMessage := fmt.Sprintf("\033[38;5;%dm[%s | %s]: %s\033[0m", color, time.Now().Format("15:04:05"), service.Name, message)
 	console.printChan <- coloredMessage

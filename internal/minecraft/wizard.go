@@ -1,9 +1,11 @@
 package minecraft
 
 import (
-	cliModel "NetManager/internal/cli/model"
-	serviceModel "NetManager/internal/minecraft/model"
-	types "NetManager/internal/minecraft/type"
+	cliModel "NetManager/external/cli"
+	"NetManager/external/minecraft"
+	"NetManager/external/service"
+	"NetManager/external/types"
+	minecraftModel "NetManager/internal/minecraft/model"
 	"bufio"
 	"encoding/json"
 	"fmt"
@@ -24,14 +26,14 @@ const (
 
 type ServiceWizard struct {
 	printer         cliModel.Printer
-	serviceManager  types.ServiceManagerBase
+	serviceManager  service.Manager
 	serviceName     string
 	fetchedVersions []string
 	fetchedBuilds   []int
 	serviceType     string
 }
 
-func NetServiceWizard(printer cliModel.Printer, serviceManager types.ServiceManagerBase, serviceName string) *ServiceWizard {
+func NetServiceWizard(printer cliModel.Printer, serviceManager service.Manager, serviceName string) *ServiceWizard {
 	return &ServiceWizard{
 		printer:        printer,
 		serviceManager: serviceManager,
@@ -40,7 +42,7 @@ func NetServiceWizard(printer cliModel.Printer, serviceManager types.ServiceMana
 }
 
 func (wizard *ServiceWizard) Run() {
-	if wizard.serviceManager.GetAllServices()[wizard.serviceName] != nil {
+	if wizard.serviceManager.Exists(wizard.serviceName) {
 		wizard.printer.PrintColored("Service with that name already exists.", wizard.printer.Service(), cliModel.Red)
 		return
 	}
@@ -61,13 +63,13 @@ func (wizard *ServiceWizard) runConfiguration() {
 	}
 
 	var result int
-	var service serviceModel.Service
+	var serviceData interface{}
 
 	switch wizard.serviceType {
-	case serviceModel.PaperType:
-		result, service = wizard.paperConfiguration()
-	case serviceModel.VelocityType:
-		result, service = wizard.velocityConfiguration()
+	case types.Paper:
+		result, serviceData = wizard.paperConfiguration()
+	case types.Velocity:
+		result, serviceData = wizard.velocityConfiguration()
 	}
 
 	switch result {
@@ -76,13 +78,13 @@ func (wizard *ServiceWizard) runConfiguration() {
 	case Canceled:
 		fmt.Println("Configuration canceled. Closing wizard")
 	case Finished:
-		wizard.finalize(service)
+		wizard.finalize(&serviceData)
 	}
 
 }
 
-func (wizard *ServiceWizard) finalize(service serviceModel.Service) {
-	wizard.serviceManager.RegisterNewService(service)
+func (wizard *ServiceWizard) finalize(serviceData *interface{}) {
+	wizard.serviceManager.AddNewService(wizard.serviceName, wizard.serviceType, serviceData)
 }
 
 func (wizard *ServiceWizard) close() {
@@ -95,9 +97,9 @@ func (wizard *ServiceWizard) readServiceType() bool {
 	input := strings.ToLower(readInput())
 	switch input {
 	case "", "p", "paper":
-		wizard.serviceType = serviceModel.PaperType
+		wizard.serviceType = types.Paper
 	case "v", "velocity":
-		wizard.serviceType = serviceModel.VelocityType
+		wizard.serviceType = types.Velocity
 	default:
 		return false
 	}
@@ -105,7 +107,7 @@ func (wizard *ServiceWizard) readServiceType() bool {
 	return true
 }
 
-func (wizard *ServiceWizard) paperConfiguration() (int, serviceModel.Service) {
+func (wizard *ServiceWizard) paperConfiguration() (int, minecraft.PaperData) {
 	fmt.Println("Fetching available versions... Please wait")
 	if !fetchVersions("https://api.papermc.io/v2/projects/paper/", &wizard.fetchedVersions) {
 		return Error, nil
@@ -130,10 +132,10 @@ func (wizard *ServiceWizard) paperConfiguration() (int, serviceModel.Service) {
 		return res, nil
 	}
 
-	return Finished, serviceModel.NewPaperService(wizard.serviceName, version, build, minReplicas)
+	return Finished, minecraftModel.NewPaperData(version, build, minReplicas)
 }
 
-func (wizard *ServiceWizard) velocityConfiguration() (int, serviceModel.Service) {
+func (wizard *ServiceWizard) velocityConfiguration() (int, minecraft.VelocityData) {
 	fmt.Println("Fetching available versions... Please wait")
 	if !fetchVersions("https://api.papermc.io/v2/projects/velocity/", &wizard.fetchedVersions) {
 		return Error, nil
@@ -158,7 +160,12 @@ func (wizard *ServiceWizard) velocityConfiguration() (int, serviceModel.Service)
 		return res, nil
 	}
 
-	return Finished, serviceModel.NewVelocityService(wizard.serviceName, version, build, port)
+	replicasAmount, res := wizard.readIntValue("Replicas amount (default: 1): ", "Invalid number of replicas...", 1, 1, math.MaxInt32, false)
+	if res != Finished {
+		return res, nil
+	}
+
+	return Finished, minecraftModel.NewVelocityData(version, build, port, replicasAmount)
 }
 
 func (wizard *ServiceWizard) readVersion(msg string, errMsg string, invalid bool) string {

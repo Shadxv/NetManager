@@ -1,23 +1,23 @@
 package servicesub
 
 import (
-	"NetManager/internal/cli/model"
+	"NetManager/external/cli"
+	"NetManager/external/service"
 	"NetManager/internal/minecraft"
-	types "NetManager/internal/minecraft/type"
 	"strings"
 )
 
 type CreateSubcommand struct {
-	Printer        model.Printer
-	ServiceManager types.ServiceManagerBase
+	Printer        cli.Printer
+	ServiceManager service.Manager
 }
 
 func (cmd *CreateSubcommand) Execute(args []string) {
 	if len(args) <= 0 {
-		cmd.Printer.PrintColored("Service name not specified. 'service create <name>'", cmd.Printer.Service(), model.Yellow)
+		cmd.Printer.PrintColored("Service name not specified. 'service create <name>'", cmd.Printer.Service(), cli.Yellow)
 		return
 	} else if len(args) > 1 {
-		cmd.Printer.PrintColored("Service name cannot contain spaces.", cmd.Printer.Service(), model.Yellow)
+		cmd.Printer.PrintColored("Service name cannot contain spaces.", cmd.Printer.Service(), cli.Yellow)
 		return
 	}
 
@@ -33,6 +33,6 @@ func (cmd *CreateSubcommand) Description() string {
 	return "Creates new service"
 }
 
-func (cmd *CreateSubcommand) Subcommands() map[string]model.Command {
-	return map[string]model.Command{}
+func (cmd *CreateSubcommand) Subcommands() map[string]cli.Command {
+	return map[string]cli.Command{}
 }

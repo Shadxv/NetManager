@@ -1,21 +1,20 @@
 package manager
 
 import (
+	"NetManager/external/cli"
 	"NetManager/internal/cli/commands"
-	"NetManager/internal/cli/model"
-
 	"strings"
 )
 
 type CommandManager struct {
-	printer  model.Printer
-	commands map[string]model.Command
+	printer  cli.Printer
+	commands map[string]cli.Command
 }
 
-func NewCommandManager(printer model.Printer) *CommandManager {
+func NewCommandManager(printer cli.Printer) *CommandManager {
 	return &CommandManager{
 		printer:  printer,
-		commands: make(map[string]model.Command),
+		commands: make(map[string]cli.Command),
 	}
 }
 
@@ -26,14 +25,14 @@ func (commandManager *CommandManager) ExecuteCommand(input string) {
 
 	command, exist := commandManager.commands[commandName]
 	if !exist {
-		commandManager.printer.PrintColored("Command does not exist!", commandManager.printer.Service(), model.Red)
+		commandManager.printer.PrintColored("Command does not exist!", commandManager.printer.Service(), cli.Red)
 		return
 	}
 
 	command.Execute(arguments)
 }
 
-func (commandManager *CommandManager) RegisterCommand(command model.Command) {
+func (commandManager *CommandManager) RegisterCommand(command cli.Command) {
 	commandManager.commands[command.Name()] = command
 }
 

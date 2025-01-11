@@ -1,8 +1,8 @@
 package model
 
 import (
+	"NetManager/external/cli"
 	"NetManager/internal/cli/handler"
-	"NetManager/internal/cli/model"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -28,7 +28,7 @@ func NewDefaultRedisConfig() *RedisConfig {
 	}
 }
 
-func CreateDefaultRedisConfig(printer model.Printer) RedisConfig {
+func CreateDefaultRedisConfig(printer cli.Printer) RedisConfig {
 	config := NewDefaultRedisConfig()
 	jsonData, _ := json.MarshalIndent(config, "", "  ")
 

@@ -1,8 +1,8 @@
 package manager
 
 import (
+	cliModel "NetManager/external/cli"
 	"NetManager/internal/cli/handler"
-	cliModel "NetManager/internal/cli/model"
 	configModel "NetManager/internal/config/model"
 	"encoding/json"
 	"os"

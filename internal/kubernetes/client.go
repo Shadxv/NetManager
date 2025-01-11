@@ -1,16 +1,14 @@
 package kubernetes
 
 import (
+	"NetManager/external/cli"
 	"context"
 	"os"
 	"path/filepath"
 
 	"NetManager/internal/cli/handler"
-	"NetManager/internal/cli/model"
 	"NetManager/internal/config/manager"
 	"NetManager/internal/kubernetes/config"
-	"NetManager/internal/service"
-
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -19,8 +17,8 @@ import (
 )
 
 type Client struct {
-	service       service.Service
-	printer       model.Printer
+	service       cli.Service
+	printer       cli.Printer
 	configManager *manager.ConfigManager
 	config        *rest.Config
 	clientset     *kubernetes.Clientset
@@ -28,9 +26,9 @@ type Client struct {
 	IsLoaded      bool
 }
 
-func NewClient(printer model.Printer, configManager *manager.ConfigManager) *Client {
+func NewClient(printer cli.Printer, configManager *manager.ConfigManager) *Client {
 	return &Client{
-		service: service.Service{
+		service: cli.Service{
 			Name: "Kubernetes",
 		},
 		printer:       printer,
@@ -43,7 +41,7 @@ func (client *Client) checkIfLoaded() bool {
 	return client.IsLoaded
 }
 
-func (client *Client) Load() {
+func (client *Client) Connect() {
 	client.printer.Print("Trying to load config...", client.service)
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -101,5 +99,14 @@ func (client *Client) DeployRedis() {
 	_, err = client.clientset.AppsV1().Deployments(client.configManager.GetMainConfig().Name).Create(context.TODO(), deployment, metav1.CreateOptions{})
 	if handler.HandleError(client.printer, "Error occured during redis deployment.", err, client.service, false) {
 		return
+	}
+}
+
+func (client *Client) DeployPaperService(serviceName string) {
+	deployment := config.GeneratePaperDeployment(serviceName)
+	_, err := client.clientset.AppsV1().Deployments(client.configManager.GetMainConfig().Name).Create(context.TODO(), deployment, metav1.CreateOptions{})
+	if err != nil {
+		client.printer.PrintColored("Error occured during "+serviceName+" deployment:", client.service, cli.Red)
+		client.printer.PrintColored(err.Error(), client.service, cli.Red)
 	}
 }

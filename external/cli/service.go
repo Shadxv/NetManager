@@ -1,4 +1,4 @@
-package service
+package cli
 
 type Service struct {
 	Name string

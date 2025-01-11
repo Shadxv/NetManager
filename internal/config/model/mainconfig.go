@@ -1,8 +1,8 @@
 package model
 
 import (
+	"NetManager/external/cli"
 	"NetManager/internal/cli/handler"
-	"NetManager/internal/cli/model"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -18,7 +18,7 @@ func NewDefaultMainConfig() *MainConfig {
 	}
 }
 
-func CreateDefaultMainConfig(printer model.Printer) MainConfig {
+func CreateDefaultMainConfig(printer cli.Printer) MainConfig {
 	config := NewDefaultMainConfig()
 	jsonData, _ := json.MarshalIndent(config, "", "  ")
 
