@@ -29,7 +29,7 @@ func (cmd *StartSubcommand) Execute(args []string) {
 		return
 	}
 
-	cmd.KubernetesClient.DeployPaperService(name)
+	//cmd.KubernetesClient.DeployPaperService(name)
 }
 
 func (cmd *StartSubcommand) Name() string {

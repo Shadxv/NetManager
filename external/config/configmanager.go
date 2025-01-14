@@ -6,4 +6,5 @@ type Manager interface {
 	Init()
 	GetMainConfig() *configModel.MainConfig
 	GetRedisConfig() *configModel.RedisConfig
+	GetHarborConfig() *configModel.HarborConfig
 }

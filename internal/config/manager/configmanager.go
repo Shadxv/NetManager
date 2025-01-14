@@ -6,13 +6,15 @@ import (
 	configModel "NetManager/internal/config/model"
 	"encoding/json"
 	"os"
+	"path"
 	"path/filepath"
 )
 
 type ConfigManager struct {
-	printer     cliModel.Printer
-	mainConfig  configModel.MainConfig
-	redisConfig configModel.RedisConfig
+	printer      cliModel.Printer
+	mainConfig   *configModel.MainConfig
+	redisConfig  *configModel.RedisConfig
+	harborConfig *configModel.HarborConfig
 }
 
 func NewConfigManager(printer cliModel.Printer) *ConfigManager {
@@ -22,17 +24,22 @@ func NewConfigManager(printer cliModel.Printer) *ConfigManager {
 }
 
 func (configManager *ConfigManager) GetMainConfig() *configModel.MainConfig {
-	return &configManager.mainConfig
+	return configManager.mainConfig
 }
 
 func (configManager *ConfigManager) GetRedisConfig() *configModel.RedisConfig {
-	return &configManager.redisConfig
+	return configManager.redisConfig
+}
+
+func (configManager *ConfigManager) GetHarborConfig() *configModel.HarborConfig {
+	return configManager.harborConfig
 }
 
 func (configManager *ConfigManager) Init() {
 	configManager.loadFolderStructure()
 	configManager.loadMainConfigFile()
 	configManager.loadRedisConfigFile()
+	configManager.loadHarborConfigFile()
 }
 
 func (configManager *ConfigManager) loadFolderStructure() {
@@ -42,6 +49,8 @@ func (configManager *ConfigManager) loadFolderStructure() {
 	configManager.loadFolder("templates", "services")
 	configManager.loadFolder("instances", "services")
 	configManager.loadFolder("config", "services")
+	configManager.loadFolder("paper-default", path.Join("services", "templates"))
+	configManager.loadFolder("velocity-default", path.Join("services", "templates"))
 }
 
 func (configManager *ConfigManager) loadFolder(name string, path string) {
@@ -91,12 +100,34 @@ func (configManager *ConfigManager) loadRedisConfigFile() {
 
 	fileData, err := os.ReadFile(filePath)
 
-	if handler.HandleError(configManager.printer, "Error occured during loading redis config.", err, configManager.printer.Service(), true) {
+	if handler.HandleError(configManager.printer, "Error occured during loading Redis config.", err, configManager.printer.Service(), true) {
 		return
 	}
 
 	err = json.Unmarshal(fileData, &configManager.redisConfig)
-	if handler.HandleError(configManager.printer, "Error occured during loading redis config.", err, configManager.printer.Service(), true) {
+	if handler.HandleError(configManager.printer, "Error occured during loading Redis config.", err, configManager.printer.Service(), true) {
+		return
+	}
+}
+
+func (configManager *ConfigManager) loadHarborConfigFile() {
+	filePath := filepath.Join("config", "harbor.json")
+	configManager.printer.Print("Loading Harbor config file...", configManager.printer.Service())
+
+	_, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		configManager.harborConfig = configModel.CreateDefaultHarborConfigFile(configManager.printer)
+		return
+	}
+
+	fileData, err := os.ReadFile(filePath)
+
+	if handler.HandleError(configManager.printer, "Error occured during loading Harbor config.", err, configManager.printer.Service(), true) {
+		return
+	}
+
+	err = json.Unmarshal(fileData, &configManager.harborConfig)
+	if handler.HandleError(configManager.printer, "Error occured during loading Harbor config.", err, configManager.printer.Service(), true) {
 		return
 	}
 }

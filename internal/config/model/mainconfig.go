@@ -18,7 +18,7 @@ func NewDefaultMainConfig() *MainConfig {
 	}
 }
 
-func CreateDefaultMainConfig(printer cli.Printer) MainConfig {
+func CreateDefaultMainConfig(printer cli.Printer) *MainConfig {
 	config := NewDefaultMainConfig()
 	jsonData, _ := json.MarshalIndent(config, "", "  ")
 
@@ -27,5 +27,5 @@ func CreateDefaultMainConfig(printer cli.Printer) MainConfig {
 	err := os.WriteFile(filePath, jsonData, 0644)
 	handler.HandleError(printer, "Error occured during loading config.", err, printer.Service(), true)
 
-	return *config
+	return config
 }

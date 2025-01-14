@@ -2,74 +2,92 @@ package manager
 
 import (
 	"NetManager/external/cli"
+	"NetManager/external/service"
 	"NetManager/internal/docker"
-	"bytes"
 	"context"
 	"fmt"
 	"github.com/docker/docker/api/types"
-	"os"
+	"github.com/docker/docker/pkg/archive"
 	"path"
-	"path/filepath"
+	"strconv"
+	"strings"
 )
 
 type ImageManager struct {
 	printer cli.Printer
-	Client  *docker.Client
+	client  *docker.Client
 }
 
 func NewImageManager(printer cli.Printer) *ImageManager {
 	return &ImageManager{
 		printer: printer,
-		Client:  docker.NewClient(printer),
+		client:  docker.NewClient(printer),
 	}
 }
 
 func (manager *ImageManager) Init() {
-	manager.Client.Init()
+	manager.client.Init()
 }
 
-func (manager *ImageManager) BuildImage(serviceName string) {
-	manager.printer.Print("Starting building image for "+serviceName, manager.Client.Service)
+func (manager *ImageManager) BuildImage(serviceModel service.Model) {
+	serviceName := serviceModel.Name()
 
-	dockerfile := manager.buildDockerFile(serviceName)
-	if dockerfile == "" {
-		return
-	}
+	manager.printer.Print("Starting building image for "+serviceName, manager.client.Service)
 
-	manager.printer.Print("\n"+dockerfile, manager.Client.Service)
-
-	reader := bytes.NewReader([]byte(dockerfile))
-
-	contextDir := path.Join("services", "templates", serviceName)
-	contextFile, err := os.Open(contextDir)
+	contextDir := path.Join("services", "templates")
+	tar, err := archive.Tar(contextDir, archive.Uncompressed)
 	if err != nil {
-		manager.printer.PrintColored("Unable to open context dir.", manager.Client.Service, cli.Red)
+		manager.printer.PrintColored("Error occured during building image. Operation canceled.", manager.client.Service, cli.Red)
+		manager.printer.PrintColored(err.Error(), manager.client.Service, cli.Red)
 		return
 	}
-	defer contextFile.Close()
+
+	var newVersion string
+	if len(serviceModel.AvailableVersions()) != 0 {
+		newVersion, err = incrementVersion(serviceModel.AvailableVersions()[len(serviceModel.AvailableVersions())-1])
+	} else {
+		newVersion = "v0.1"
+	}
+
+	if err != nil {
+		manager.printer.PrintColored(err.Error(), manager.client.Service, cli.Red)
+		return
+	}
 
 	buildOptions := types.ImageBuildOptions{
-		Tags: []string{"dreammc-server:latest"},
+		Tags:       []string{serviceName + ":" + newVersion},
+		Dockerfile: path.Base(path.Join(contextDir, serviceName, "Dockerfile")),
+		NoCache:    true,
 	}
 
-	_, err = manager.Client.DockerClient.ImageBuild(context.Background(), reader, buildOptions)
+	resp, err := manager.client.DockerClient.ImageBuild(context.Background(), tar, buildOptions)
 	if err != nil {
-		manager.printer.PrintColored("Error occured during building image. Operation canceled.", manager.Client.Service, cli.Red)
-		manager.printer.PrintColored(err.Error(), manager.Client.Service, cli.Red)
+		manager.printer.PrintColored("Error occured during building image. Operation canceled.", manager.client.Service, cli.Red)
+		manager.printer.PrintColored(err.Error(), manager.client.Service, cli.Red)
 		return
 	}
-	manager.printer.Print("Finished building image for "+serviceName, manager.Client.Service)
+	defer resp.Body.Close()
+
+	manager.printer.Print("Finished building image for "+serviceName, manager.client.Service)
 }
 
-func (manager *ImageManager) buildDockerFile(serviceName string) string {
+func incrementVersion(version string) (string, error) {
+	if !strings.HasPrefix(version, "v") {
+		return "", fmt.Errorf("corrupted version name: %s", version)
+	}
+	version = version[1:]
+	parts := strings.Split(version, ".")
+	if len(parts) != 2 {
+		return "", fmt.Errorf("corrupted version name: %s", version)
+	}
 
-	contextpath := filepath.Join("services", "templates", serviceName)
+	minor, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return "", fmt.Errorf("corrupted version name: %s", version)
+	}
+	minor++
 
-	return fmt.Sprintf(`
-FROM eclipse-temurin:21-jre
-WORKDIR /dreammc
-COPY %s/ /dreammc/
-RUN echo "eula=true" > eula.txt
-CMD ["java -Xmx2G -Xms1G -jar server.jar nogui"]
-`, contextpath)
+	newVersion := fmt.Sprintf("v%s.%d", parts[0], minor)
+
+	return newVersion, nil
 }

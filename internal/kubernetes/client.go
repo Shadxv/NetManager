@@ -2,43 +2,47 @@ package kubernetes
 
 import (
 	"NetManager/external/cli"
-	"context"
+	iConfig "NetManager/external/config"
+	"NetManager/internal/kubernetes/manager"
 	"os"
 	"path/filepath"
 
 	"NetManager/internal/cli/handler"
-	"NetManager/internal/config/manager"
-	"NetManager/internal/kubernetes/config"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 type Client struct {
-	service       cli.Service
-	printer       cli.Printer
-	configManager *manager.ConfigManager
-	config        *rest.Config
-	clientset     *kubernetes.Clientset
-	namespace     *corev1.Namespace
-	IsLoaded      bool
+	service        cli.Service
+	printer        cli.Printer
+	config         *rest.Config
+	clientset      *kubernetes.Clientset
+	clusterManager *manager.ClusterManager
+	isLoaded       bool
 }
 
-func NewClient(printer cli.Printer, configManager *manager.ConfigManager) *Client {
+func NewClient(printer cli.Printer) *Client {
 	return &Client{
 		service: cli.Service{
 			Name: "Kubernetes",
 		},
-		printer:       printer,
-		configManager: configManager,
-		IsLoaded:      false,
+		printer:  printer,
+		isLoaded: false,
 	}
 }
 
-func (client *Client) checkIfLoaded() bool {
-	return client.IsLoaded
+func (client *Client) Init(configManager iConfig.Manager) {
+	if client.clientset == nil {
+		return
+	}
+
+	client.clusterManager = manager.NetClusterManager(client.service, client.printer, configManager, client.clientset)
+	client.isLoaded = client.clusterManager.Init()
+}
+
+func (client *Client) IsLoaded() bool {
+	return client.isLoaded
 }
 
 func (client *Client) Connect() {
@@ -61,52 +65,33 @@ func (client *Client) Connect() {
 	}
 
 	client.clientset = clientset
-	client.IsLoaded = true
+	client.isLoaded = true
 	client.printer.Print("Connected to Kubernetes Cluster", client.service)
-
-	client.GetNamespace()
 }
 
-func (client *Client) GetNamespace() {
-	namespaceName := client.configManager.GetMainConfig().Name
-	namespace, err := client.clientset.CoreV1().Namespaces().Get(context.Background(), namespaceName, metav1.GetOptions{})
-
-	if err != nil {
-		client.printer.Print("Creating new namespace...", client.service)
-		newNamespace := &corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: namespaceName,
-			},
-		}
-		namespace, err = client.clientset.CoreV1().Namespaces().Create(context.Background(), newNamespace, metav1.CreateOptions{})
-		if handler.HandleError(client.printer, "Error occured during loading config.", err, client.service, true) {
-			return
-		}
-		client.printer.Print("Created new namespace: "+namespaceName, client.service)
-	}
-
-	client.namespace = namespace
+func (client *Client) ClusterManager() *manager.ClusterManager {
+	return client.clusterManager
 }
 
-func (client *Client) DeployRedis() {
-	configMap, deployment := config.GenerateRedisConfig(client.configManager.GetRedisConfig())
-
-	_, err := client.clientset.CoreV1().ConfigMaps(client.configManager.GetMainConfig().Name).Create(context.TODO(), configMap, metav1.CreateOptions{})
-	if handler.HandleError(client.printer, "Error occured during creating redis config map.", err, client.service, false) {
-		return
-	}
-
-	_, err = client.clientset.AppsV1().Deployments(client.configManager.GetMainConfig().Name).Create(context.TODO(), deployment, metav1.CreateOptions{})
-	if handler.HandleError(client.printer, "Error occured during redis deployment.", err, client.service, false) {
-		return
-	}
-}
-
-func (client *Client) DeployPaperService(serviceName string) {
-	deployment := config.GeneratePaperDeployment(serviceName)
-	_, err := client.clientset.AppsV1().Deployments(client.configManager.GetMainConfig().Name).Create(context.TODO(), deployment, metav1.CreateOptions{})
-	if err != nil {
-		client.printer.PrintColored("Error occured during "+serviceName+" deployment:", client.service, cli.Red)
-		client.printer.PrintColored(err.Error(), client.service, cli.Red)
-	}
-}
+//func (client *Client) DeployRedis() {
+//	configMap, deployment := config.GenerateRedisConfig(client.configManager.GetRedisConfig())
+//
+//	_, err := client.clientset.CoreV1().ConfigMaps(client.configManager.GetMainConfig().Name).Create(context.TODO(), configMap, metav1.CreateOptions{})
+//	if handler.HandleError(client.printer, "Error occured during creating redis config map.", err, client.service, false) {
+//		return
+//	}
+//
+//	_, err = client.clientset.AppsV1().Deployments(client.configManager.GetMainConfig().Name).Create(context.TODO(), deployment, metav1.CreateOptions{})
+//	if handler.HandleError(client.printer, "Error occured during redis deployment.", err, client.service, false) {
+//		return
+//	}
+//}
+//
+//func (client *Client) DeployPaperService(serviceName string) {
+//	deployment := config.GeneratePaperDeployment(serviceName)
+//	_, err := client.clientset.AppsV1().Deployments(client.configManager.GetMainConfig().Name).Create(context.TODO(), deployment, metav1.CreateOptions{})
+//	if err != nil {
+//		client.printer.PrintColored("Error occured during "+serviceName+" deployment:", client.service, cli.Red)
+//		client.printer.PrintColored(err.Error(), client.service, cli.Red)
+//	}
+//}

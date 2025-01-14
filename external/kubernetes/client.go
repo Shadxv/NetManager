@@ -1,8 +1,9 @@
 package kubernetes
 
+import "NetManager/internal/kubernetes/manager"
+
 type Client interface {
 	Connect()
-	GetNamespace()
-	DeployRedis()
-	DeployPaperService(serviceName string)
+	IsLoaded() bool
+	ClusterManager() *manager.ClusterManager
 }

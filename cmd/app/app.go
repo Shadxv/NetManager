@@ -4,6 +4,7 @@ import (
 	"NetManager/internal/cli"
 	cmdManager "NetManager/internal/config/manager"
 	dockerManager "NetManager/internal/docker/manager"
+	harborModel "NetManager/internal/docker/model"
 	"NetManager/internal/kubernetes"
 	serviceManager "NetManager/internal/service/manager"
 	"sync"
@@ -34,9 +35,10 @@ func main() {
 	ImageManager.Init()
 	defer ImageManager.Client.Close()
 
-	KubernetesClient = kubernetes.NewClient(Console, ConfigManager)
+	KubernetesClient = kubernetes.NewClient(Console)
 	KubernetesClient.Connect()
-	if !KubernetesClient.IsLoaded {
+	KubernetesClient.Init(ConfigManager)
+	if !KubernetesClient.IsLoaded() {
 		Console.CloseGracefully("App is shutting down...")
 		return
 	}
@@ -48,6 +50,12 @@ func main() {
 	}
 	ServiceManager = serviceManager.CreateNewServiceManager(Console)
 	ServiceManager.Init(Console.CommandManager, ImageManager, KubernetesClient)
+
+	harborModel.CreateHarborService(
+		ConfigManager.GetHarborConfig(),
+		ServiceManager,
+		KubernetesClient.ClusterManager(),
+	)
 
 	wg.Wait()
 }

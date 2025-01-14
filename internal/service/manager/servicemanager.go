@@ -9,11 +9,14 @@ import (
 	"NetManager/external/types"
 	"NetManager/internal/cli/commands"
 	"NetManager/internal/service/model"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 type ServiceManager struct {
@@ -47,6 +50,21 @@ func (manager *ServiceManager) Init(commandManager cli.CommandManager, imageMana
 
 func (manager *ServiceManager) AddNewService(name string, serviceType string, serviceData *interface{}) service.Model {
 	serviceModel := model.CreateNewService(name, serviceType, serviceData)
+	manager.services[name] = serviceModel
+	go manager.createMinecraftServiceFileStructure(serviceModel)
+	return serviceModel
+}
+
+func (manager *ServiceManager) AddService(name string, serviceType string, status string, image string, version string, serviceData interface{}) service.Model {
+	serviceModel := model.NewService(
+		name,
+		serviceType,
+		status,
+		image,
+		version,
+		make([]string, 0),
+		&serviceData,
+	)
 	manager.services[name] = serviceModel
 	go manager.createMinecraftServiceFileStructure(serviceModel)
 	return serviceModel
@@ -98,7 +116,7 @@ func (manager *ServiceManager) createFileStructure(service service.Model) {
 
 	manager.printer.Print("Starting downloading server jar for "+service.Name()+"...", manager.printer.Service())
 	jarPath := filepath.Join(folderPath, "server.jar")
-	if !manager.downloadServerJar(service, jarPath) {
+	if !manager.downloadServerJar(service, jarPath) || !manager.createDockerfile(service, path.Join(folderPath, "Dockerfile")) {
 		return
 	}
 	manager.printer.Print("Successfuly downloaded server jar for "+service.Name()+".", manager.printer.Service())
@@ -162,4 +180,31 @@ func (manager *ServiceManager) buidlUrlForServiceJar(service service.Model) stri
 	default:
 		return ""
 	}
+}
+
+func (manager *ServiceManager) createDockerfile(service service.Model, path string) bool {
+	dockerfileContent := fmt.Sprintf(`
+FROM eclipse-temurin:21-jre
+WORKDIR /dreammc
+COPY %s-default/ /dreammc/
+COPY %s/ /dreammc/
+RUN echo "eula=true" > eula.txt
+CMD ["java -jar server.jar nogui"]
+`, strings.ToLower(service.ServiceType()), service.Name())
+
+	out, err := os.Create(path)
+	if err != nil {
+		manager.handleStructureError(err, "Error occured during creating Dockerfile for "+service.Name()+" service. Removing it from service registry.", service)
+		return false
+	}
+	defer out.Close()
+
+	_, err = out.WriteString(dockerfileContent)
+	if err != nil {
+		manager.handleStructureError(err, "Error occured during creating Dockerfile for "+service.Name()+" service. Removing it from service registry.", service)
+		os.Remove(path)
+		return false
+	}
+
+	return true
 }

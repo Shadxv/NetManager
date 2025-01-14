@@ -28,7 +28,7 @@ func NewDefaultRedisConfig() *RedisConfig {
 	}
 }
 
-func CreateDefaultRedisConfig(printer cli.Printer) RedisConfig {
+func CreateDefaultRedisConfig(printer cli.Printer) *RedisConfig {
 	config := NewDefaultRedisConfig()
 	jsonData, _ := json.MarshalIndent(config, "", "  ")
 
@@ -37,5 +37,5 @@ func CreateDefaultRedisConfig(printer cli.Printer) RedisConfig {
 	err := os.WriteFile(filePath, jsonData, 0644)
 	handler.HandleError(printer, "Error occured during loading redis config.", err, printer.Service(), true)
 
-	return *config
+	return config
 }

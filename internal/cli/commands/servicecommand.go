@@ -38,11 +38,18 @@ func (cmd *ServiceCommand) Subcommands() map[string]cli.Command {
 		Printer:        cmd.Printer,
 		ServiceManager: cmd.ServiceManager,
 	}
+
+	listPodsSubcommand := servicesub.ListPodsSubcommand{
+		Printer:        cmd.Printer,
+		ServiceManager: cmd.ServiceManager,
+	}
+
 	buildSubcommand := servicesub.BuildSubcommand{
 		Printer:        cmd.Printer,
 		ServiceManager: cmd.ServiceManager,
 		ImageManager:   cmd.ImageManager,
 	}
+
 	startSubcommand := servicesub.StartSubcommand{
 		Printer:          cmd.Printer,
 		ServiceManager:   cmd.ServiceManager,
@@ -54,5 +61,6 @@ func (cmd *ServiceCommand) Subcommands() map[string]cli.Command {
 		listSubcommand.Name():   &listSubcommand,
 		buildSubcommand.Name():  &buildSubcommand,
 		startSubcommand.Name():  &startSubcommand,
+		listPodsSubcommand.Name(): &listPodsSubcommand,
 	}
 }
