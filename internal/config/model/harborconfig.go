@@ -9,26 +9,18 @@ import (
 )
 
 type HarborConfig struct {
-	httpPort     int    `json:"http-port"`
-	projectName  string `json:"project-name"`
-	username     string `json:"username"`
-	userMail     string `json:"user-mail"`
-	userPassword string `json:"user-password"`
-	userRole     string `json:"user-role"`
-	disableGuest bool   `json:"disable-guest"`
+	Domain      string `json:"domain"`
+	ProjectName string `json:"project-name"`
+	Username    string `json:"username"`
+	Password    string `json:"user-password"`
 }
 
 func NewDefaultHarborConfig() *HarborConfig {
 	return &HarborConfig{
-		httpPort: 8001,
-
-		projectName: "netmanager-project",
-		username:    "netmanage",
-		userMail:    "netmanager@netmanager.net",
-		userPassword: "" +
-			"",
-		userRole:     "maintainer",
-		disableGuest: true,
+		Domain:      "registry.netmanager.net",
+		ProjectName: "netmanager-project",
+		Username:    "netmanager",
+		Password:    "password",
 	}
 }
 
@@ -41,32 +33,4 @@ func CreateDefaultHarborConfigFile(printer cli.Printer) *HarborConfig {
 	handler.HandleError(printer, "Error occured during loading config.", err, printer.Service(), true)
 
 	return config
-}
-
-func (config HarborConfig) HttpPort() int {
-	return config.httpPort
-}
-
-func (config HarborConfig) ProjectName() string {
-	return config.projectName
-}
-
-func (config HarborConfig) Username() string {
-	return config.username
-}
-
-func (config HarborConfig) UserMail() string {
-	return config.userMail
-}
-
-func (config HarborConfig) UserPassword() string {
-	return config.userPassword
-}
-
-func (config HarborConfig) UserRole() string {
-	return config.userRole
-}
-
-func (config HarborConfig) DisableGuest() bool {
-	return config.disableGuest
 }

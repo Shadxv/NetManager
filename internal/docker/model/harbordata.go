@@ -1,29 +1,23 @@
 package model
 
 type HarborData struct {
-	httpPort     int
-	projectName  string
-	username     string
-	userMail     string
-	userPassword string
-	userRole     string
-	disableGuest bool
+	domain      string
+	projectName string
+	username    string
+	password    string
 }
 
-func NewHarborData(httpPort int, projectName string, username string, userMail string, userPassword string, userRole string, disableGuest bool) *HarborData {
+func NewHarborData(domain string, projectName string, username string, password string) *HarborData {
 	return &HarborData{
-		httpPort: httpPort,
+		domain:      domain,
 		projectName: projectName,
-		username: username,
-		userMail: userMail,
-		userPassword: userPassword,
-		userRole: userRole,
-		disableGuest: disableGuest,
+		username:    username,
+		password:    password,
 	}
 }
 
-func (data *HarborData) HttpPort() int {
-	return data.httpPort
+func (data *HarborData) Domain() string {
+	return data.domain
 }
 
 func (data *HarborData) ProjectName() string {
@@ -34,19 +28,6 @@ func (data *HarborData) Username() string {
 	return data.username
 }
 
-func (data *HarborData) UserMail() string {
-	return data.userMail
+func (data *HarborData) Password() string {
+	return data.password
 }
-
-func (data *HarborData) UserPassword() string {
-	return data.userPassword
-}
-
-func (data *HarborData) UserRole() string {
-	return data.userRole
-}
-
-func (data *HarborData) DisableGuest() bool {
-	return data.disableGuest
-}
-

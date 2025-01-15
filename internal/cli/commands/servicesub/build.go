@@ -23,12 +23,13 @@ func (cmd *BuildSubcommand) Execute(args []string) {
 	}
 
 	name := strings.ToLower(args[0])
-	if !cmd.ServiceManager.Exists(name) {
+	serviceModel := cmd.ServiceManager.GetService(name)
+	if serviceModel == nil {
 		cmd.Printer.PrintColored("Service with this name does not exist.", cmd.Printer.Service(), cli.Yellow)
 		return
 	}
 
-	cmd.ImageManager.BuildImage(name)
+	cmd.ImageManager.FullDeployImage(serviceModel, cmd.ServiceManager)
 }
 
 func (cmd *BuildSubcommand) Name() string {

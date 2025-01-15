@@ -33,7 +33,7 @@ func main() {
 
 	ImageManager = dockerManager.NewImageManager(Console)
 	ImageManager.Init()
-	defer ImageManager.Client.Close()
+	defer ImageManager.Client().Close()
 
 	KubernetesClient = kubernetes.NewClient(Console)
 	KubernetesClient.Connect()

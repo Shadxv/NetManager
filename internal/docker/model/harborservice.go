@@ -9,19 +9,16 @@ import (
 
 func CreateHarborService(config *model.HarborConfig, serviceManager service.Manager, clusterManager kubernetes.ClusterManager) {
 	serviceModel := serviceManager.AddService(
-		"Harbor",
+		"harbor",
 		types.Harbor,
 		types.Running,
 		"goharbor",
 		"",
 		NewHarborData(
-			config.HttpPort(),
-			config.ProjectName(),
-			config.Username(),
-			config.UserMail(),
-			config.UserPassword(),
-			config.UserRole(),
-			config.DisableGuest(),
+			config.Domain,
+			config.ProjectName,
+			config.Username,
+			config.Password,
 		),
 	)
 
