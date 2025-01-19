@@ -1,13 +1,14 @@
 package handler
 
 import (
-	"NetManager/external/cli"
+	"NetManager/pkg/interfaces"
+	"NetManager/pkg/types"
 )
 
-func HandleError(printer cli.Printer, message string, err error, service cli.Service, shouldShutdown bool) bool {
+func HandleError(printer interfaces.Printer, message string, err error, service interfaces.Service, shouldShutdown bool) bool {
 	if err != nil {
-		printer.PrintColored(message, service, cli.Red)
-		printer.PrintColored(err.Error(), service, cli.Red)
+		printer.PrintColored(message, service, types.Red)
+		printer.PrintColored(err.Error(), service, types.Red)
 		if shouldShutdown {
 			printer.CloseGracefully("App is shutting down...")
 		}

@@ -1,19 +1,16 @@
 package commands
 
 import (
-	"NetManager/external/cli"
-	"NetManager/external/docker"
-	"NetManager/external/kubernetes"
-	"NetManager/external/service"
 	"NetManager/internal/cli/commands/servicesub"
 	"NetManager/internal/cli/handler"
+	"NetManager/pkg/interfaces"
 )
 
 type ServiceCommand struct {
-	Printer          cli.Printer
-	ServiceManager   service.Manager
-	ImageManager     docker.ImageManager
-	KubernetesClient kubernetes.Client
+	Printer          interfaces.Printer
+	ServiceManager   interfaces.ServiceManager
+	ImageManager     interfaces.ImageManager
+	KubernetesClient interfaces.KubernetesClient
 }
 
 func (cmd *ServiceCommand) Execute(args []string) {
@@ -28,7 +25,7 @@ func (cmd *ServiceCommand) Description() string {
 	return "Command to manage all services on NetManager"
 }
 
-func (cmd *ServiceCommand) Subcommands() map[string]cli.Command {
+func (cmd *ServiceCommand) Subcommands() map[string]interfaces.Command {
 	createSubcommand := servicesub.CreateSubcommand{
 		Printer:        cmd.Printer,
 		ServiceManager: cmd.ServiceManager,
@@ -56,11 +53,11 @@ func (cmd *ServiceCommand) Subcommands() map[string]cli.Command {
 		KubernetesClient: cmd.KubernetesClient,
 	}
 
-	return map[string]cli.Command{
-		createSubcommand.Name(): &createSubcommand,
-		listSubcommand.Name():   &listSubcommand,
-		buildSubcommand.Name():  &buildSubcommand,
-		startSubcommand.Name():  &startSubcommand,
+	return map[string]interfaces.Command{
+		createSubcommand.Name():   &createSubcommand,
+		listSubcommand.Name():     &listSubcommand,
+		buildSubcommand.Name():    &buildSubcommand,
+		startSubcommand.Name():    &startSubcommand,
 		listPodsSubcommand.Name(): &listPodsSubcommand,
 	}
 }

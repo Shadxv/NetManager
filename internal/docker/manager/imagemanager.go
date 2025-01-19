@@ -1,15 +1,14 @@
 package manager
 
 import (
-	"NetManager/external/cli"
-	iDocker "NetManager/external/docker"
-	"NetManager/external/service"
-	docker "NetManager/internal/docker"
+	"NetManager/internal/docker"
+	"NetManager/pkg/interfaces"
+	"NetManager/pkg/types"
 	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/docker/docker/api/types"
+	dockerTypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/registry"
@@ -21,11 +20,11 @@ import (
 )
 
 type ImageManager struct {
-	printer cli.Printer
+	printer interfaces.Printer
 	client  *docker.Client
 }
 
-func NewImageManager(printer cli.Printer) *ImageManager {
+func NewImageManager(printer interfaces.Printer) *ImageManager {
 	return &ImageManager{
 		printer: printer,
 		client:  docker.NewClient(printer),
@@ -36,11 +35,11 @@ func (manager *ImageManager) Init() {
 	manager.client.Init()
 }
 
-func (manager *ImageManager) Client() iDocker.Client {
+func (manager *ImageManager) Client() interfaces.DockerClient {
 	return manager.client
 }
 
-func (manager *ImageManager) BuildImage(serviceModel service.Model) (bool, string) {
+func (manager *ImageManager) BuildImage(serviceModel interfaces.ServiceModel) (bool, string) {
 	serviceName := serviceModel.Name()
 
 	manager.printer.Print("Starting building image for "+serviceName, manager.client.Service)
@@ -48,8 +47,8 @@ func (manager *ImageManager) BuildImage(serviceModel service.Model) (bool, strin
 	contextDir := path.Join("services", "templates")
 	tar, err := archive.Tar(contextDir, archive.Uncompressed)
 	if err != nil {
-		manager.printer.PrintColored("Error occured during building image. Operation canceled.", manager.client.Service, cli.Red)
-		manager.printer.PrintColored(err.Error(), manager.client.Service, cli.Red)
+		manager.printer.PrintColored("Error occured during building image. Operation canceled.", manager.client.Service, types.Red)
+		manager.printer.PrintColored(err.Error(), manager.client.Service, types.Red)
 		return false, ""
 	}
 
@@ -61,13 +60,13 @@ func (manager *ImageManager) BuildImage(serviceModel service.Model) (bool, strin
 	}
 
 	if err != nil {
-		manager.printer.PrintColored(err.Error(), manager.client.Service, cli.Red)
+		manager.printer.PrintColored(err.Error(), manager.client.Service, types.Red)
 		return false, ""
 	}
 
 	tag := serviceName + ":" + newVersion
 
-	buildOptions := types.ImageBuildOptions{
+	buildOptions := dockerTypes.ImageBuildOptions{
 		Tags:       []string{tag},
 		Dockerfile: path.Join(serviceName, "Dockerfile"),
 		NoCache:    true,
@@ -76,8 +75,8 @@ func (manager *ImageManager) BuildImage(serviceModel service.Model) (bool, strin
 
 	build, err := manager.client.DockerClient.ImageBuild(context.Background(), tar, buildOptions)
 	if err != nil {
-		manager.printer.PrintColored("Error occured during building image. Operation canceled.", manager.client.Service, cli.Red)
-		manager.printer.PrintColored(err.Error(), manager.client.Service, cli.Red)
+		manager.printer.PrintColored("Error occured during building image. Operation canceled.", manager.client.Service, types.Red)
+		manager.printer.PrintColored(err.Error(), manager.client.Service, types.Red)
 		return false, ""
 	}
 	serviceModel.AddVersion(newVersion)
@@ -85,13 +84,13 @@ func (manager *ImageManager) BuildImage(serviceModel service.Model) (bool, strin
 	imageID, err := getImageId(build.Body)
 
 	if imageID == "" {
-		manager.printer.PrintColored("Error occured during reading image id. Operation canceled.", manager.client.Service, cli.Red)
+		manager.printer.PrintColored("Error occured during reading image id. Operation canceled.", manager.client.Service, types.Red)
 	}
 
 	save, err := manager.client.DockerClient.ImageSave(context.Background(), []string{imageID})
 	if err != nil {
-		manager.printer.PrintColored("Error occured during saving image. Operation canceled.", manager.client.Service, cli.Red)
-		manager.printer.PrintColored(err.Error(), manager.client.Service, cli.Red)
+		manager.printer.PrintColored("Error occured during saving image. Operation canceled.", manager.client.Service, types.Red)
+		manager.printer.PrintColored(err.Error(), manager.client.Service, types.Red)
 		return false, ""
 	}
 	defer build.Body.Close()
@@ -105,33 +104,33 @@ func (manager *ImageManager) BuildImage(serviceModel service.Model) (bool, strin
 	return true, imageID
 }
 
-func (manager *ImageManager) TagImage(serviceModel service.Model, serviceManager service.Manager) (bool, iDocker.HarborData) {
+func (manager *ImageManager) TagImage(serviceModel interfaces.ServiceModel, serviceManager interfaces.ServiceManager) (bool, interfaces.HarborData) {
 	manager.printer.Print("Creating tag new image version...", manager.client.Service)
 
 	harborService := serviceManager.GetService("harbor")
 	if harborService == nil {
-		manager.printer.PrintColored("Could not tag new image. Harbor service is not loaded.", manager.client.Service, cli.Red)
+		manager.printer.PrintColored("Could not tag new image. Harbor service is not loaded.", manager.client.Service, types.Red)
 		return false, nil
 	}
 
-	harborData := iDocker.GetHarborData(harborService)
+	harborData := interfaces.GetHarborData(harborService)
 	if harborData == nil {
-		manager.printer.PrintColored("Could not tag new image. Harbor data is corrupted.", manager.client.Service, cli.Red)
+		manager.printer.PrintColored("Could not tag new image. Harbor data is corrupted.", manager.client.Service, types.Red)
 		return false, nil
 	}
 	version := serviceModel.AvailableVersions()[len(serviceModel.AvailableVersions())-1]
 	targetTag := harborData.Domain() + "/" + harborData.ProjectName() + "/" + serviceModel.ImageName() + ":" + version
 	err := manager.client.DockerClient.ImageTag(context.Background(), serviceModel.ImageName()+":"+version, targetTag)
 	if err != nil {
-		manager.printer.PrintColored("Error occured during setting new image tag.", manager.client.Service, cli.Red)
-		manager.printer.PrintColored(err.Error(), manager.client.Service, cli.Red)
+		manager.printer.PrintColored("Error occured during setting new image tag.", manager.client.Service, types.Red)
+		manager.printer.PrintColored(err.Error(), manager.client.Service, types.Red)
 		return false, nil
 	}
 	manager.printer.Print("Successfully tagged new image version: "+targetTag, manager.client.Service)
 	return true, harborData
 }
 
-func (manager *ImageManager) PushImage(serviceModel service.Model, harborData iDocker.HarborData) bool {
+func (manager *ImageManager) PushImage(serviceModel interfaces.ServiceModel, harborData interfaces.HarborData) bool {
 	manager.printer.Print("Pushing image to remote registry...", manager.client.Service)
 
 	version := serviceModel.AvailableVersions()[len(serviceModel.AvailableVersions())-1]
@@ -145,15 +144,15 @@ func (manager *ImageManager) PushImage(serviceModel service.Model, harborData iD
 	encodedAuth, err := registry.EncodeAuthConfig(auth)
 
 	if err != nil {
-		manager.printer.PrintColored("Error occured during encoding auth config.", manager.client.Service, cli.Red)
-		manager.printer.PrintColored(err.Error(), manager.client.Service, cli.Red)
+		manager.printer.PrintColored("Error occured during encoding auth config.", manager.client.Service, types.Red)
+		manager.printer.PrintColored(err.Error(), manager.client.Service, types.Red)
 		return false
 	}
 
 	push, err := manager.client.DockerClient.ImagePush(context.Background(), targetTag, image.PushOptions{RegistryAuth: encodedAuth})
 	if err != nil {
-		manager.printer.PrintColored("Error occured during pushing image.", manager.client.Service, cli.Red)
-		manager.printer.PrintColored(err.Error(), manager.client.Service, cli.Red)
+		manager.printer.PrintColored("Error occured during pushing image.", manager.client.Service, types.Red)
+		manager.printer.PrintColored(err.Error(), manager.client.Service, types.Red)
 		return false
 	}
 	defer push.Close()
@@ -169,20 +168,21 @@ func (manager *ImageManager) PushImage(serviceModel service.Model, harborData iD
 func (manager *ImageManager) RemoveImage(id string) {
 	_, err := manager.client.DockerClient.ImageRemove(context.Background(), id, image.RemoveOptions{Force: true})
 	if err != nil {
-		manager.printer.PrintColored("Error occured during clearing images.", manager.client.Service, cli.Red)
-		manager.printer.PrintColored(err.Error(), manager.client.Service, cli.Red)
+		manager.printer.PrintColored("Error occured during clearing images.", manager.client.Service, types.Red)
+		manager.printer.PrintColored(err.Error(), manager.client.Service, types.Red)
 		return
 	}
 
 	_, err = manager.client.DockerClient.ImagesPrune(context.Background(), filters.NewArgs(filters.KeyValuePair{Key: "dangling", Value: "true"}))
 	if err != nil {
-		manager.printer.PrintColored("Error occured during clearing dangling images.", manager.client.Service, cli.Red)
-		manager.printer.PrintColored(err.Error(), manager.client.Service, cli.Red)
+		manager.printer.PrintColored("Error occured during clearing dangling images.", manager.client.Service, types.Red)
+		manager.printer.PrintColored(err.Error(), manager.client.Service, types.Red)
 		return
 	}
+	manager.printer.Print("Cleared unused Docker images.", manager.client.Service)
 }
 
-func (manager *ImageManager) FullDeployImage(serviceModel service.Model, serviceManager service.Manager) bool {
+func (manager *ImageManager) FullDeployImage(serviceModel interfaces.ServiceModel, serviceManager interfaces.ServiceManager) bool {
 	success, id := manager.BuildImage(serviceModel)
 	if !success {
 		return false

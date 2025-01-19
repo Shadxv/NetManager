@@ -1,4 +1,4 @@
-package cli
+package interfaces
 
 type Command interface {
 	Execute(args []string)

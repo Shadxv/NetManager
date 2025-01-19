@@ -1,21 +1,22 @@
 package docker
 
 import (
-	"NetManager/external/cli"
+	"NetManager/pkg/interfaces"
+	"NetManager/pkg/types"
 	dockerClient "github.com/docker/docker/client"
 )
 
 type Client struct {
 	DockerClient *dockerClient.Client
-	printer      cli.Printer
-	Service      cli.Service
+	printer      interfaces.Printer
+	Service      interfaces.Service
 }
 
-func NewClient(printer cli.Printer) *Client {
+func NewClient(printer interfaces.Printer) *Client {
 	client := Client{
 		printer: printer,
-		Service: cli.Service{
-			Name: "Docker Client",
+		Service: interfaces.Service{
+			Name: "Docker DockerClient",
 		},
 	}
 	return &client
@@ -25,7 +26,7 @@ func (client *Client) Init() {
 	apiClient, err := dockerClient.NewClientWithOpts(dockerClient.FromEnv)
 
 	if err != nil {
-		client.printer.PrintColored(err.Error(), client.Service, cli.Red)
+		client.printer.PrintColored(err.Error(), client.Service, types.Red)
 		client.printer.CloseGracefully("App is shutting down...")
 		return
 	}

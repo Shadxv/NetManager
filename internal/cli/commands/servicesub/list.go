@@ -1,15 +1,14 @@
 package servicesub
 
 import (
-	"NetManager/external/cli"
-	"NetManager/external/service"
+	"NetManager/pkg/interfaces"
 	"bytes"
 	"github.com/olekukonko/tablewriter"
 )
 
 type ListSubcommand struct {
-	Printer        cli.Printer
-	ServiceManager service.Manager
+	Printer        interfaces.Printer
+	ServiceManager interfaces.ServiceManager
 }
 
 func (cmd *ListSubcommand) Execute(args []string) {
@@ -39,6 +38,6 @@ func (cmd *ListSubcommand) Description() string {
 	return "Lists all services"
 }
 
-func (cmd *ListSubcommand) Subcommands() map[string]cli.Command {
-	return map[string]cli.Command{}
+func (cmd *ListSubcommand) Subcommands() map[string]interfaces.Command {
+	return map[string]interfaces.Command{}
 }

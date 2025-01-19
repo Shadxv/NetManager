@@ -1,11 +1,11 @@
 package commands
 
 import (
-	"NetManager/external/cli"
+	"NetManager/pkg/interfaces"
 )
 
 type StopCommand struct {
-	Printer cli.Printer
+	Printer interfaces.Printer
 }
 
 func (cmd *StopCommand) Execute(args []string) {
@@ -20,6 +20,6 @@ func (cmd *StopCommand) Description() string {
 	return "Stops app and all services"
 }
 
-func (cmd *StopCommand) Subcommands() map[string]cli.Command {
-	return map[string]cli.Command{}
+func (cmd *StopCommand) Subcommands() map[string]interfaces.Command {
+	return map[string]interfaces.Command{}
 }

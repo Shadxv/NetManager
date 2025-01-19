@@ -1,9 +1,9 @@
 package model
 
 import (
-	"NetManager/external/kubernetes"
-	"NetManager/external/types"
 	"NetManager/internal/kubernetes/model"
+	"NetManager/pkg/interfaces"
+	"NetManager/pkg/types"
 	corev1 "k8s.io/api/core/v1"
 	"slices"
 )
@@ -15,13 +15,13 @@ type Service struct {
 	imageName         string
 	currentVersion    string
 	availableVersions []string
-	appConfig         *interface{}
-	podInstances      map[string]kubernetes.PodInstance
+	appConfig         interface{}
+	podInstances      map[string]interfaces.PodInstance
 	netService        *corev1.Service
-	serviceData       *interface{}
+	serviceData       interface{}
 }
 
-func NewService(name string, serviceType string, status string, imageName string, currentVersion string, availableVersions []string, serviceData *interface{}) *Service {
+func NewService(name string, serviceType string, status string, imageName string, currentVersion string, availableVersions []string, serviceData interface{}) *Service {
 	return &Service{
 		name:              name,
 		serviceType:       serviceType,
@@ -29,19 +29,19 @@ func NewService(name string, serviceType string, status string, imageName string
 		imageName:         imageName,
 		currentVersion:    currentVersion,
 		availableVersions: availableVersions,
-		podInstances: make(map[string]kubernetes.PodInstance),
+		podInstances:      make(map[string]interfaces.PodInstance),
 		serviceData:       serviceData,
 	}
 }
 
-func CreateNewService(name string, serviceType string, serviceData *interface{}) *Service {
+func CreateNewService(name string, serviceType string, serviceData interface{}) *Service {
 	return &Service{
-		name:        name,
-		serviceType: serviceType,
-		status:      types.Stopped,
-		imageName:   name,
-		podInstances: make(map[string]kubernetes.PodInstance),
-		serviceData: serviceData,
+		name:         name,
+		serviceType:  serviceType,
+		status:       types.Stopped,
+		imageName:    name,
+		podInstances: make(map[string]interfaces.PodInstance),
+		serviceData:  serviceData,
 	}
 }
 
@@ -87,11 +87,11 @@ func (service *Service) AddVersion(version string) {
 	service.availableVersions = append(service.availableVersions, version)
 }
 
-func (service *Service) AppConfig() *interface{} {
+func (service *Service) AppConfig() interface{} {
 	return service.appConfig
 }
 
-func (service *Service) SetAppConfig(config *interface{}) {
+func (service *Service) SetAppConfig(config interface{}) {
 	service.appConfig = config
 }
 
@@ -99,21 +99,21 @@ func (service *Service) RemoveAppConfig() {
 	service.appConfig = nil
 }
 
-func (service *Service) PodInstances() map[string]kubernetes.PodInstance {
+func (service *Service) PodInstances() map[string]interfaces.PodInstance {
 	return service.podInstances
 }
 
-func (service *Service) addPodInstance(instance kubernetes.PodInstance) {
+func (service *Service) addPodInstance(instance interfaces.PodInstance) {
 	service.podInstances[instance.Name()] = instance
 }
 
-func (service *Service) AddPodInstance(name string, pod *corev1.Pod, status string) kubernetes.PodInstance {
+func (service *Service) AddPodInstance(name string, pod *corev1.Pod, status string) interfaces.PodInstance {
 	instance := model.NewPodInstance(name, pod, status)
 	service.addPodInstance(instance)
 	return instance
 }
 
-func (service *Service) CreatePodInstance(name string, pod *corev1.Pod) kubernetes.PodInstance {
+func (service *Service) CreatePodInstance(name string, pod *corev1.Pod) interfaces.PodInstance {
 	instance := model.CreateNewPodInstance(name, pod)
 	service.addPodInstance(instance)
 	return instance
@@ -135,6 +135,31 @@ func (service *Service) RemoveNetService() {
 	service.netService = nil
 }
 
-func (service *Service) ServiceData() *interface{} {
+func (service *Service) ServiceData() interface{} {
 	return service.serviceData
+}
+
+func (service *Service) Build(printer interfaces.Printer) {
+	data := service.serviceData
+	data.(interfaces.Data).Build(service, printer)
+}
+
+func (service *Service) Update(printer interfaces.Printer) {
+	data := service.serviceData
+	data.(interfaces.Data).Update(service, printer)
+}
+
+func (service *Service) Stop(printer interfaces.Printer) {
+	data := service.serviceData
+	data.(interfaces.Data).Stop(service, printer)
+}
+
+func (service *Service) Start(printer interfaces.Printer) {
+	data := service.serviceData
+	data.(interfaces.Data).Start(service, printer)
+}
+
+func (service *Service) Deploy(printer interfaces.Printer) {
+	data := service.serviceData
+	data.(interfaces.Data).Deploy(service, printer)
 }

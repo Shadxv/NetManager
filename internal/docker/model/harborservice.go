@@ -1,13 +1,11 @@
 package model
 
 import (
-	"NetManager/external/kubernetes"
-	"NetManager/external/service"
-	"NetManager/external/types"
-	"NetManager/internal/config/model"
+	"NetManager/pkg/interfaces"
+	"NetManager/pkg/types"
 )
 
-func CreateHarborService(config *model.HarborConfig, serviceManager service.Manager, clusterManager kubernetes.ClusterManager) {
+func CreateHarborService(config interfaces.HarborConfig, serviceManager interfaces.ServiceManager, clusterManager interfaces.ClusterManager) {
 	serviceModel := serviceManager.AddService(
 		"harbor",
 		types.Harbor,
@@ -15,17 +13,17 @@ func CreateHarborService(config *model.HarborConfig, serviceManager service.Mana
 		"goharbor",
 		"",
 		NewHarborData(
-			config.Domain,
-			config.ProjectName,
-			config.Username,
-			config.Password,
+			config.GetDomain(),
+			config.GetProjectName(),
+			config.GetUsername(),
+			config.GetPassword(),
 		),
 	)
 
 	getPods(serviceModel, clusterManager)
 }
 
-func getPods(service service.Model, manager kubernetes.ClusterManager) {
+func getPods(service interfaces.ServiceModel, manager interfaces.ClusterManager) {
 	pods := manager.GetPods("app=harbor")
 	if len(pods) != 0 {
 		for _, pod := range pods {

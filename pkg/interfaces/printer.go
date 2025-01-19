@@ -1,10 +1,4 @@
-package cli
-
-const (
-	Red    = 160
-	Green  = 72
-	Yellow = 221
-)
+package interfaces
 
 type Printer interface {
 	PrintColored(message string, service Service, color int)

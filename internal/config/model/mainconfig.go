@@ -1,8 +1,8 @@
 package model
 
 import (
-	"NetManager/external/cli"
 	"NetManager/internal/cli/handler"
+	"NetManager/pkg/interfaces"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -18,7 +18,7 @@ func NewDefaultMainConfig() *MainConfig {
 	}
 }
 
-func CreateDefaultMainConfig(printer cli.Printer) *MainConfig {
+func CreateDefaultMainConfig(printer interfaces.Printer) *MainConfig {
 	config := NewDefaultMainConfig()
 	jsonData, _ := json.MarshalIndent(config, "", "  ")
 
@@ -28,4 +28,8 @@ func CreateDefaultMainConfig(printer cli.Printer) *MainConfig {
 	handler.HandleError(printer, "Error occured during loading config.", err, printer.Service(), true)
 
 	return config
+}
+
+func (config *MainConfig) GetName() string {
+	return config.Name
 }

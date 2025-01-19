@@ -1,9 +1,8 @@
 package kubernetes
 
 import (
-	"NetManager/external/cli"
-	iConfig "NetManager/external/config"
 	"NetManager/internal/kubernetes/manager"
+	"NetManager/pkg/interfaces"
 	"os"
 	"path/filepath"
 
@@ -14,17 +13,17 @@ import (
 )
 
 type Client struct {
-	service        cli.Service
-	printer        cli.Printer
+	service        interfaces.Service
+	printer        interfaces.Printer
 	config         *rest.Config
 	clientset      *kubernetes.Clientset
 	clusterManager *manager.ClusterManager
 	isLoaded       bool
 }
 
-func NewClient(printer cli.Printer) *Client {
+func NewClient(printer interfaces.Printer) *Client {
 	return &Client{
-		service: cli.Service{
+		service: interfaces.Service{
 			Name: "Kubernetes",
 		},
 		printer:  printer,
@@ -32,7 +31,7 @@ func NewClient(printer cli.Printer) *Client {
 	}
 }
 
-func (client *Client) Init(configManager iConfig.Manager) {
+func (client *Client) Init(configManager interfaces.ConfigManager) {
 	if client.clientset == nil {
 		return
 	}
@@ -69,11 +68,11 @@ func (client *Client) Connect() {
 	client.printer.Print("Connected to Kubernetes Cluster", client.service)
 }
 
-func (client *Client) ClusterManager() *manager.ClusterManager {
+func (client *Client) ClusterManager() interfaces.ClusterManager {
 	return client.clusterManager
 }
 
-//func (client *Client) DeployRedis() {
+//func (client *DockerClient) DeployRedis() {
 //	configMap, deployment := config.GenerateRedisConfig(client.configManager.GetRedisConfig())
 //
 //	_, err := client.clientset.CoreV1().ConfigMaps(client.configManager.GetMainConfig().Name).Create(context.TODO(), configMap, metav1.CreateOptions{})
@@ -87,7 +86,7 @@ func (client *Client) ClusterManager() *manager.ClusterManager {
 //	}
 //}
 //
-//func (client *Client) DeployPaperService(serviceName string) {
+//func (client *DockerClient) DeployPaperService(serviceName string) {
 //	deployment := config.GeneratePaperDeployment(serviceName)
 //	_, err := client.clientset.AppsV1().Deployments(client.configManager.GetMainConfig().Name).Create(context.TODO(), deployment, metav1.CreateOptions{})
 //	if err != nil {

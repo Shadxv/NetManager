@@ -1,21 +1,21 @@
 package servicesub
 
 import (
-	"NetManager/external/cli"
-	"NetManager/external/service"
+	"NetManager/pkg/interfaces"
+	"NetManager/pkg/types"
 	"bytes"
 	"github.com/olekukonko/tablewriter"
 )
 
 type ListPodsSubcommand struct {
-	Printer        cli.Printer
-	ServiceManager service.Manager
+	Printer        interfaces.Printer
+	ServiceManager interfaces.ServiceManager
 }
 
 func (cmd *ListPodsSubcommand) Execute(args []string) {
 
 	if len(args) != 1 {
-		cmd.Printer.PrintColored("Service name not specified. 'service listpods <name>'", cmd.Printer.Service(), cli.Yellow)
+		cmd.Printer.PrintColored("Service name not specified. 'service listpods <name>'", cmd.Printer.Service(), types.Yellow)
 		return
 	}
 
@@ -25,7 +25,7 @@ func (cmd *ListPodsSubcommand) Execute(args []string) {
 
 	serviceModel := cmd.ServiceManager.GetService(args[0])
 	if serviceModel == nil {
-		cmd.Printer.PrintColored("Service not found.", cmd.Printer.Service(), cli.Yellow)
+		cmd.Printer.PrintColored("Service not found.", cmd.Printer.Service(), types.Yellow)
 		return
 	}
 
@@ -47,6 +47,6 @@ func (cmd *ListPodsSubcommand) Description() string {
 	return "Lists all pods that currently are running"
 }
 
-func (cmd *ListPodsSubcommand) Subcommands() map[string]cli.Command {
-	return map[string]cli.Command{}
+func (cmd *ListPodsSubcommand) Subcommands() map[string]interfaces.Command {
+	return map[string]interfaces.Command{}
 }

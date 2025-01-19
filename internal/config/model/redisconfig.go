@@ -1,8 +1,8 @@
 package model
 
 import (
-	"NetManager/external/cli"
 	"NetManager/internal/cli/handler"
+	"NetManager/pkg/interfaces"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -28,7 +28,7 @@ func NewDefaultRedisConfig() *RedisConfig {
 	}
 }
 
-func CreateDefaultRedisConfig(printer cli.Printer) *RedisConfig {
+func CreateDefaultRedisConfig(printer interfaces.Printer) *RedisConfig {
 	config := NewDefaultRedisConfig()
 	jsonData, _ := json.MarshalIndent(config, "", "  ")
 
@@ -38,4 +38,28 @@ func CreateDefaultRedisConfig(printer cli.Printer) *RedisConfig {
 	handler.HandleError(printer, "Error occured during loading redis config.", err, printer.Service(), true)
 
 	return config
+}
+
+func (config *RedisConfig) GetDockerImage() string {
+	return config.DockerImage
+}
+
+func (config *RedisConfig) GetVersion() string {
+	return config.Version
+}
+
+func (config *RedisConfig) GetPort() int {
+	return config.Port
+}
+
+func (config *RedisConfig) GetPassword() string {
+	return config.Password
+}
+
+func (config *RedisConfig) GetMaxMemory() string {
+	return config.MaxMemory
+}
+
+func (config *RedisConfig) GetMaxMemoryPolicy() string {
+	return config.MaxMemoryPolicy
 }

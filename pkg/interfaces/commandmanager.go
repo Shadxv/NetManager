@@ -1,4 +1,4 @@
-package cli
+package interfaces
 
 type CommandManager interface {
 	Init()

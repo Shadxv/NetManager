@@ -1,11 +1,11 @@
 package handler
 
 import (
-	"NetManager/external/cli"
+	"NetManager/pkg/interfaces"
 	"strings"
 )
 
-func HandleHelp(printer cli.Printer, command cli.Command) {
+func HandleHelp(printer interfaces.Printer, command interfaces.Command) {
 	help := "Help for '" + command.Name() + "' - " + command.Description()
 	if len(command.Subcommands()) > 0 {
 		help += "\n\nSubcommands:"
@@ -18,7 +18,7 @@ func HandleHelp(printer cli.Printer, command cli.Command) {
 	printer.Print("\n"+help, printer.Service())
 }
 
-func HandleSubcommand(printer cli.Printer, command cli.Command, args []string) {
+func HandleSubcommand(printer interfaces.Printer, command interfaces.Command, args []string) {
 	if len(args) <= 0 {
 		HandleHelp(printer, command)
 		return

@@ -1,14 +1,10 @@
 package manager
 
 import (
-	"NetManager/external/cli"
-	"NetManager/external/docker"
-	"NetManager/external/kubernetes"
-	"NetManager/external/minecraft"
-	"NetManager/external/service"
-	"NetManager/external/types"
 	"NetManager/internal/cli/commands"
 	"NetManager/internal/service/model"
+	"NetManager/pkg/interfaces"
+	"NetManager/pkg/types"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,25 +16,25 @@ import (
 )
 
 type ServiceManager struct {
-	printer  cli.Printer
-	services map[string]service.Model
+	printer  interfaces.Printer
+	services map[string]interfaces.ServiceModel
 }
 
-func NewServiceManager(printer cli.Printer, services map[string]service.Model) *ServiceManager {
+func NewServiceManager(printer interfaces.Printer, services map[string]interfaces.ServiceModel) *ServiceManager {
 	return &ServiceManager{
 		printer:  printer,
 		services: services,
 	}
 }
 
-func CreateNewServiceManager(printer cli.Printer) *ServiceManager {
+func CreateNewServiceManager(printer interfaces.Printer) *ServiceManager {
 	return &ServiceManager{
 		printer:  printer,
-		services: make(map[string]service.Model),
+		services: make(map[string]interfaces.ServiceModel),
 	}
 }
 
-func (manager *ServiceManager) Init(commandManager cli.CommandManager, imageManager docker.ImageManager, kubernetesClient kubernetes.Client) *ServiceManager {
+func (manager *ServiceManager) Init(commandManager interfaces.CommandManager, imageManager interfaces.ImageManager, kubernetesClient interfaces.KubernetesClient) *ServiceManager {
 	commandManager.RegisterCommand(&commands.ServiceCommand{
 		Printer:          manager.printer,
 		ServiceManager:   manager,
@@ -48,14 +44,14 @@ func (manager *ServiceManager) Init(commandManager cli.CommandManager, imageMana
 	return manager
 }
 
-func (manager *ServiceManager) AddNewService(name string, serviceType string, serviceData *interface{}) service.Model {
+func (manager *ServiceManager) AddNewService(name string, serviceType string, serviceData interface{}) interfaces.ServiceModel {
 	serviceModel := model.CreateNewService(name, serviceType, serviceData)
 	manager.services[name] = serviceModel
 	go manager.createMinecraftServiceFileStructure(serviceModel)
 	return serviceModel
 }
 
-func (manager *ServiceManager) AddService(name string, serviceType string, status string, image string, version string, serviceData interface{}) service.Model {
+func (manager *ServiceManager) AddService(name string, serviceType string, status string, image string, version string, serviceData interface{}) interfaces.ServiceModel {
 	serviceModel := model.NewService(
 		name,
 		serviceType,
@@ -63,14 +59,14 @@ func (manager *ServiceManager) AddService(name string, serviceType string, statu
 		image,
 		version,
 		make([]string, 0),
-		&serviceData,
+		serviceData,
 	)
 	manager.services[name] = serviceModel
 	go manager.createMinecraftServiceFileStructure(serviceModel)
 	return serviceModel
 }
 
-func (manager *ServiceManager) DeleteService(name string) service.Model {
+func (manager *ServiceManager) DeleteService(name string) interfaces.ServiceModel {
 	serviceModel := manager.services[name]
 	if serviceModel == nil {
 		return nil
@@ -83,12 +79,12 @@ func (manager *ServiceManager) Exists(name string) bool {
 	return manager.services[name] != nil
 }
 
-func (manager *ServiceManager) GetService(name string) service.Model {
+func (manager *ServiceManager) GetService(name string) interfaces.ServiceModel {
 	return manager.services[name]
 }
 
-func (manager *ServiceManager) Services() []service.Model {
-	services := make([]service.Model, 0, len(manager.services))
+func (manager *ServiceManager) Services() []interfaces.ServiceModel {
+	services := make([]interfaces.ServiceModel, 0, len(manager.services))
 	for _, serviceModel := range manager.services {
 		services = append(services, serviceModel)
 	}
@@ -96,7 +92,7 @@ func (manager *ServiceManager) Services() []service.Model {
 }
 
 // Minecraft section
-func (manager *ServiceManager) createMinecraftServiceFileStructure(service service.Model) {
+func (manager *ServiceManager) createMinecraftServiceFileStructure(service interfaces.ServiceModel) {
 	switch service.ServiceType() {
 	case types.Paper, types.Velocity:
 		manager.createFileStructure(service)
@@ -105,7 +101,7 @@ func (manager *ServiceManager) createMinecraftServiceFileStructure(service servi
 	}
 }
 
-func (manager *ServiceManager) createFileStructure(service service.Model) {
+func (manager *ServiceManager) createFileStructure(service interfaces.ServiceModel) {
 	manager.printer.Print("Creating file structure for "+service.Name()+"...", manager.printer.Service())
 	folderPath := filepath.Join("services/templates", service.Name())
 	err := os.Mkdir(folderPath, 0755)
@@ -123,7 +119,7 @@ func (manager *ServiceManager) createFileStructure(service service.Model) {
 	manager.printer.Print("Service "+service.Name()+" creation has finished.", manager.printer.Service())
 }
 
-func (manager *ServiceManager) downloadServerJar(service service.Model, jarPath string) bool {
+func (manager *ServiceManager) downloadServerJar(service interfaces.ServiceModel, jarPath string) bool {
 	out, err := os.Create(jarPath)
 	if err != nil {
 		manager.handleStructureError(err, "Error occured during creating file structure for "+service.Name()+" service. Removing it from service registry.", service)
@@ -133,7 +129,7 @@ func (manager *ServiceManager) downloadServerJar(service service.Model, jarPath 
 
 	url := manager.buidlUrlForServiceJar(service)
 	if url == "" {
-		manager.printer.PrintColored("Error occured during building url for server jar for "+service.Name()+" service. Removing it from service registry.", manager.printer.Service(), cli.Red)
+		manager.printer.PrintColored("Error occured during building url for server jar for "+service.Name()+" service. Removing it from service registry.", manager.printer.Service(), types.Red)
 		manager.DeleteService(service.Name())
 		return false
 	}
@@ -146,7 +142,7 @@ func (manager *ServiceManager) downloadServerJar(service service.Model, jarPath 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		manager.printer.PrintColored("Error occured during downloading server jar for "+service.Name()+" service. Removing it from service registry. Status code: "+resp.Status, manager.printer.Service(), cli.Red)
+		manager.printer.PrintColored("Error occured during downloading server jar for "+service.Name()+" service. Removing it from service registry. Status code: "+resp.Status, manager.printer.Service(), types.Red)
 		manager.DeleteService(service.Name())
 		return false
 	}
@@ -159,30 +155,30 @@ func (manager *ServiceManager) downloadServerJar(service service.Model, jarPath 
 	return true
 }
 
-func (manager *ServiceManager) handleStructureError(err error, msg string, service service.Model) {
-	manager.printer.PrintColored(msg, manager.printer.Service(), cli.Red)
-	manager.printer.PrintColored(err.Error(), manager.printer.Service(), cli.Red)
+func (manager *ServiceManager) handleStructureError(err error, msg string, service interfaces.ServiceModel) {
+	manager.printer.PrintColored(msg, manager.printer.Service(), types.Red)
+	manager.printer.PrintColored(err.Error(), manager.printer.Service(), types.Red)
 	manager.DeleteService(service.Name())
 }
 
-func (manager *ServiceManager) buidlUrlForServiceJar(service service.Model) string {
+func (manager *ServiceManager) buidlUrlForServiceJar(service interfaces.ServiceModel) string {
 	switch service.ServiceType() {
 	case types.Paper:
-		data := *minecraft.GetPaperData(service)
+		data := *interfaces.GetPaperData(service)
 		version := data.Version()
-		build := strconv.Itoa(data.Build())
+		build := strconv.Itoa(data.BuildNumber())
 		return "https://api.papermc.io/v2/projects/paper/versions/" + version + "/builds/" + build + "/downloads/paper-" + version + "-" + build + ".jar"
 	case types.Velocity:
-		data := *minecraft.GetVelocityData(service)
+		data := *interfaces.GetVelocityData(service)
 		version := data.Version()
-		build := strconv.Itoa(data.Build())
+		build := strconv.Itoa(data.BuildNumber())
 		return "https://api.papermc.io/v2/projects/velocity/versions/" + version + "/builds/" + build + "/downloads/velocity-" + version + "-" + build + ".jar"
 	default:
 		return ""
 	}
 }
 
-func (manager *ServiceManager) createDockerfile(service service.Model, path string) bool {
+func (manager *ServiceManager) createDockerfile(service interfaces.ServiceModel, path string) bool {
 	dockerfileContent := fmt.Sprintf(`
 FROM eclipse-temurin:21-jre
 WORKDIR /dreammc

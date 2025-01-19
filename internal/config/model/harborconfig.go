@@ -1,8 +1,8 @@
 package model
 
 import (
-	"NetManager/external/cli"
 	"NetManager/internal/cli/handler"
+	"NetManager/pkg/interfaces"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -24,7 +24,7 @@ func NewDefaultHarborConfig() *HarborConfig {
 	}
 }
 
-func CreateDefaultHarborConfigFile(printer cli.Printer) *HarborConfig {
+func CreateDefaultHarborConfigFile(printer interfaces.Printer) *HarborConfig {
 	config := NewDefaultHarborConfig()
 	jsonData, _ := json.MarshalIndent(config, "", " ")
 
@@ -33,4 +33,20 @@ func CreateDefaultHarborConfigFile(printer cli.Printer) *HarborConfig {
 	handler.HandleError(printer, "Error occured during loading config.", err, printer.Service(), true)
 
 	return config
+}
+
+func (config *HarborConfig) GetDomain() string {
+	return config.Domain
+}
+
+func (config *HarborConfig) GetProjectName() string {
+	return config.ProjectName
+}
+
+func (config *HarborConfig) GetUsername() string {
+	return config.Username
+}
+
+func (config *HarborConfig) GetPassword() string {
+	return config.Password
 }

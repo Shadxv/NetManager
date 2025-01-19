@@ -1,9 +1,10 @@
 package manager
 
 import (
-	cliModel "NetManager/external/cli"
 	"NetManager/internal/cli/handler"
 	configModel "NetManager/internal/config/model"
+	"NetManager/pkg/interfaces"
+	"NetManager/pkg/types"
 	"encoding/json"
 	"os"
 	"path"
@@ -11,27 +12,27 @@ import (
 )
 
 type ConfigManager struct {
-	printer      cliModel.Printer
+	printer      interfaces.Printer
 	mainConfig   *configModel.MainConfig
 	redisConfig  *configModel.RedisConfig
 	harborConfig *configModel.HarborConfig
 }
 
-func NewConfigManager(printer cliModel.Printer) *ConfigManager {
+func NewConfigManager(printer interfaces.Printer) *ConfigManager {
 	return &ConfigManager{
 		printer: printer,
 	}
 }
 
-func (configManager *ConfigManager) GetMainConfig() *configModel.MainConfig {
+func (configManager *ConfigManager) GetMainConfig() interfaces.MainConfig {
 	return configManager.mainConfig
 }
 
-func (configManager *ConfigManager) GetRedisConfig() *configModel.RedisConfig {
+func (configManager *ConfigManager) GetRedisConfig() interfaces.RedisConfig {
 	return configManager.redisConfig
 }
 
-func (configManager *ConfigManager) GetHarborConfig() *configModel.HarborConfig {
+func (configManager *ConfigManager) GetHarborConfig() interfaces.HarborConfig {
 	return configManager.harborConfig
 }
 
@@ -59,8 +60,8 @@ func (configManager *ConfigManager) loadFolder(name string, path string) {
 		configManager.printer.Print("'"+name+"' folder not found. Creating new one...", configManager.printer.Service())
 		err := os.Mkdir(fullPath, 0755)
 		if err != nil {
-			configManager.printer.PrintColored("Could not create new '"+name+"' folder...", configManager.printer.Service(), cliModel.Red)
-			configManager.printer.PrintColored(err.Error(), configManager.printer.Service(), cliModel.Red)
+			configManager.printer.PrintColored("Could not create new '"+name+"' folder...", configManager.printer.Service(), types.Red)
+			configManager.printer.PrintColored(err.Error(), configManager.printer.Service(), types.Red)
 			configManager.printer.CloseGracefully("App is shutting down...")
 		}
 	}

@@ -1,11 +1,9 @@
 package minecraft
 
 import (
-	cliModel "NetManager/external/cli"
-	"NetManager/external/minecraft"
-	"NetManager/external/service"
-	"NetManager/external/types"
 	minecraftModel "NetManager/internal/minecraft/model"
+	"NetManager/pkg/interfaces"
+	"NetManager/pkg/types"
 	"bufio"
 	"encoding/json"
 	"fmt"
@@ -25,15 +23,15 @@ const (
 )
 
 type ServiceWizard struct {
-	printer         cliModel.Printer
-	serviceManager  service.Manager
+	printer         interfaces.Printer
+	serviceManager  interfaces.ServiceManager
 	serviceName     string
 	fetchedVersions []string
 	fetchedBuilds   []int
 	serviceType     string
 }
 
-func NetServiceWizard(printer cliModel.Printer, serviceManager service.Manager, serviceName string) *ServiceWizard {
+func NetServiceWizard(printer interfaces.Printer, serviceManager interfaces.ServiceManager, serviceName string) *ServiceWizard {
 	return &ServiceWizard{
 		printer:        printer,
 		serviceManager: serviceManager,
@@ -43,7 +41,7 @@ func NetServiceWizard(printer cliModel.Printer, serviceManager service.Manager, 
 
 func (wizard *ServiceWizard) Run() {
 	if wizard.serviceManager.Exists(wizard.serviceName) {
-		wizard.printer.PrintColored("Service with that name already exists.", wizard.printer.Service(), cliModel.Red)
+		wizard.printer.PrintColored("Service with that name already exists.", wizard.printer.Service(), types.Red)
 		return
 	}
 	wizard.init()
@@ -107,7 +105,7 @@ func (wizard *ServiceWizard) readServiceType() bool {
 	return true
 }
 
-func (wizard *ServiceWizard) paperConfiguration() (int, minecraft.PaperData) {
+func (wizard *ServiceWizard) paperConfiguration() (int, interfaces.PaperData) {
 	fmt.Println("Fetching available versions... Please wait")
 	if !fetchVersions("https://api.papermc.io/v2/projects/paper/", &wizard.fetchedVersions) {
 		return Error, nil
@@ -135,7 +133,7 @@ func (wizard *ServiceWizard) paperConfiguration() (int, minecraft.PaperData) {
 	return Finished, minecraftModel.NewPaperData(version, build, minReplicas)
 }
 
-func (wizard *ServiceWizard) velocityConfiguration() (int, minecraft.VelocityData) {
+func (wizard *ServiceWizard) velocityConfiguration() (int, interfaces.VelocityData) {
 	fmt.Println("Fetching available versions... Please wait")
 	if !fetchVersions("https://api.papermc.io/v2/projects/velocity/", &wizard.fetchedVersions) {
 		return Error, nil
