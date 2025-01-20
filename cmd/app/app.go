@@ -52,6 +52,7 @@ func main() {
 	ServiceManager.Init(Console.CommandManager, ImageManager, KubernetesClient)
 
 	harborModel.CreateHarborService(
+		Console,
 		ConfigManager.GetHarborConfig(),
 		ServiceManager,
 		KubernetesClient.ClusterManager(),

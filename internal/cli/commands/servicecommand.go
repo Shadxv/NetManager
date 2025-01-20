@@ -53,11 +53,18 @@ func (cmd *ServiceCommand) Subcommands() map[string]interfaces.Command {
 		KubernetesClient: cmd.KubernetesClient,
 	}
 
+	stopSubcommand := servicesub.StopSubcommand{
+		Printer:          cmd.Printer,
+		ServiceManager:   cmd.ServiceManager,
+		KubernetesClient: cmd.KubernetesClient,
+	}
+
 	return map[string]interfaces.Command{
 		createSubcommand.Name():   &createSubcommand,
 		listSubcommand.Name():     &listSubcommand,
 		buildSubcommand.Name():    &buildSubcommand,
 		startSubcommand.Name():    &startSubcommand,
+		stopSubcommand.Name():     &stopSubcommand,
 		listPodsSubcommand.Name(): &listPodsSubcommand,
 	}
 }

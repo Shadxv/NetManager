@@ -7,13 +7,13 @@ import (
 	"strings"
 )
 
-type StartSubcommand struct {
+type StopSubcommand struct {
 	Printer          interfaces.Printer
 	ServiceManager   interfaces.ServiceManager
 	KubernetesClient interfaces.KubernetesClient
 }
 
-func (cmd *StartSubcommand) Execute(args []string) {
+func (cmd *StopSubcommand) Execute(args []string) {
 	if len(args) <= 0 {
 		cmd.Printer.PrintColored("Service name not specified. 'service create <name>'", cmd.Printer.Service(), types.Yellow)
 		return
@@ -28,17 +28,17 @@ func (cmd *StartSubcommand) Execute(args []string) {
 		return
 	}
 
-	cmd.ServiceManager.GetService(name).Deploy(cmd.Printer, cmd.KubernetesClient.ClusterManager())
+	cmd.ServiceManager.GetService(name).Stop(cmd.Printer, cmd.KubernetesClient.ClusterManager())
 }
 
-func (cmd *StartSubcommand) Name() string {
-	return "start"
+func (cmd *StopSubcommand) Name() string {
+	return "stop"
 }
 
-func (cmd *StartSubcommand) Description() string {
-	return "Starts service"
+func (cmd *StopSubcommand) Description() string {
+	return "Stops service"
 }
 
-func (cmd *StartSubcommand) Subcommands() map[string]interfaces.Command {
+func (cmd *StopSubcommand) Subcommands() map[string]interfaces.Command {
 	return map[string]interfaces.Command{}
 }

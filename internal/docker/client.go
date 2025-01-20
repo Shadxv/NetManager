@@ -16,7 +16,7 @@ func NewClient(printer interfaces.Printer) *Client {
 	client := Client{
 		printer: printer,
 		Service: interfaces.Service{
-			Name: "Docker DockerClient",
+			Name: "Docker Client",
 		},
 	}
 	return &client

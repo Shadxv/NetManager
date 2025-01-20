@@ -161,6 +161,9 @@ func (manager *ImageManager) PushImage(serviceModel interfaces.ServiceModel, har
 		scanner.Text()
 	}
 
+	if serviceModel.CurrentVersion() == "" {
+		serviceModel.SetCurrentVersion(version)
+	}
 	manager.printer.Print("Successfully pushed image to remote registry.", manager.client.Service)
 	return true
 }

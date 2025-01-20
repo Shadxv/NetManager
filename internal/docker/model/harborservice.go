@@ -5,7 +5,7 @@ import (
 	"NetManager/pkg/types"
 )
 
-func CreateHarborService(config interfaces.HarborConfig, serviceManager interfaces.ServiceManager, clusterManager interfaces.ClusterManager) {
+func CreateHarborService(printer interfaces.Printer, config interfaces.HarborConfig, serviceManager interfaces.ServiceManager, clusterManager interfaces.ClusterManager) {
 	serviceModel := serviceManager.AddService(
 		"harbor",
 		types.Harbor,
@@ -20,14 +20,5 @@ func CreateHarborService(config interfaces.HarborConfig, serviceManager interfac
 		),
 	)
 
-	getPods(serviceModel, clusterManager)
-}
-
-func getPods(service interfaces.ServiceModel, manager interfaces.ClusterManager) {
-	pods := manager.GetPods("app=harbor")
-	if len(pods) != 0 {
-		for _, pod := range pods {
-			service.AddPodInstance(pod.Name, &pod, string(pod.Status.Phase))
-		}
-	}
+	serviceModel.Deploy(printer, clusterManager)
 }

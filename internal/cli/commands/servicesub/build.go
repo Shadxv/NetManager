@@ -28,7 +28,7 @@ func (cmd *BuildSubcommand) Execute(args []string) {
 		return
 	}
 
-	cmd.ImageManager.FullDeployImage(serviceModel, cmd.ServiceManager)
+	serviceModel.Build(cmd.Printer, cmd.ImageManager, cmd.ServiceManager)
 }
 
 func (cmd *BuildSubcommand) Name() string {

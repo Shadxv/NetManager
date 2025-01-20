@@ -6,9 +6,10 @@ type PaperData interface {
 	MinReplicas() int
 }
 
-func GetPaperData(service ServiceModel) *PaperData {
-	if data, ok := service.ServiceData().(PaperData); ok {
-		return &data
+func GetPaperData(service ServiceModel) PaperData {
+	data := *service.ServiceData()
+	if data, ok := data.(PaperData); ok {
+		return data
 	}
 	return nil
 }

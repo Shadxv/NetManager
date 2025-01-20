@@ -7,9 +7,10 @@ type VelocityData interface {
 	ReplicasAmount() int
 }
 
-func GetVelocityData(service ServiceModel) *VelocityData {
-	if data, ok := service.ServiceData().(VelocityData); ok {
-		return &data
+func GetVelocityData(service ServiceModel) VelocityData {
+	data := *service.ServiceData()
+	if data, ok := data.(VelocityData); ok {
+		return data
 	}
 	return nil
 }

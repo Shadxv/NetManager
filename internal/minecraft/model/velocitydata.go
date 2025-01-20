@@ -36,22 +36,22 @@ func (data *VelocityData) ReplicasAmount() int {
 	return data.replicasAmount
 }
 
-func (data *VelocityData) Build(serviceModel interfaces.ServiceModel, printer interfaces.Printer) {
+func (data *VelocityData) Build(serviceModel interfaces.ServiceModel, printer interfaces.Printer, imageManager interfaces.ImageManager, serviceManager interfaces.ServiceManager) {
 
 }
 
-func (data *VelocityData) Update(serviceModel interfaces.ServiceModel, printer interfaces.Printer) {
+func (data *VelocityData) Update(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
 
 }
 
-func (data *VelocityData) Stop(serviceModel interfaces.ServiceModel, printer interfaces.Printer) {
+func (data *VelocityData) Stop(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
 
 }
 
-func (data *VelocityData) Start(serviceModel interfaces.ServiceModel, printer interfaces.Printer) {
+func (data *VelocityData) Start(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
 
 }
 
-func (data *VelocityData) Deploy(serviceModel interfaces.ServiceModel, printer interfaces.Printer) {
+func (data *VelocityData) Deploy(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
 
 }

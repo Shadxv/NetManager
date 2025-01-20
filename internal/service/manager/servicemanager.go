@@ -44,7 +44,7 @@ func (manager *ServiceManager) Init(commandManager interfaces.CommandManager, im
 	return manager
 }
 
-func (manager *ServiceManager) AddNewService(name string, serviceType string, serviceData interface{}) interfaces.ServiceModel {
+func (manager *ServiceManager) AddNewService(name string, serviceType string, serviceData *interface{}) interfaces.ServiceModel {
 	serviceModel := model.CreateNewService(name, serviceType, serviceData)
 	manager.services[name] = serviceModel
 	go manager.createMinecraftServiceFileStructure(serviceModel)
@@ -59,7 +59,7 @@ func (manager *ServiceManager) AddService(name string, serviceType string, statu
 		image,
 		version,
 		make([]string, 0),
-		serviceData,
+		&serviceData,
 	)
 	manager.services[name] = serviceModel
 	go manager.createMinecraftServiceFileStructure(serviceModel)
@@ -164,12 +164,20 @@ func (manager *ServiceManager) handleStructureError(err error, msg string, servi
 func (manager *ServiceManager) buidlUrlForServiceJar(service interfaces.ServiceModel) string {
 	switch service.ServiceType() {
 	case types.Paper:
-		data := *interfaces.GetPaperData(service)
+		data := interfaces.GetPaperData(service)
+		if data == nil {
+			manager.printer.PrintColored("Data is nil.", manager.printer.Service(), types.Red)
+			return ""
+		}
 		version := data.Version()
 		build := strconv.Itoa(data.BuildNumber())
 		return "https://api.papermc.io/v2/projects/paper/versions/" + version + "/builds/" + build + "/downloads/paper-" + version + "-" + build + ".jar"
 	case types.Velocity:
-		data := *interfaces.GetVelocityData(service)
+		data := interfaces.GetVelocityData(service)
+		if data == nil {
+			manager.printer.PrintColored("Data is nil.", manager.printer.Service(), types.Red)
+			return ""
+		}
 		version := data.Version()
 		build := strconv.Itoa(data.BuildNumber())
 		return "https://api.papermc.io/v2/projects/velocity/versions/" + version + "/builds/" + build + "/downloads/velocity-" + version + "-" + build + ".jar"
@@ -185,7 +193,7 @@ WORKDIR /dreammc
 COPY %s-default/ /dreammc/
 COPY %s/ /dreammc/
 RUN echo "eula=true" > eula.txt
-CMD ["java -jar server.jar nogui"]
+CMD ["java", "-jar", "server.jar", "--nogui"]
 `, strings.ToLower(service.ServiceType()), service.Name())
 
 	out, err := os.Create(path)

@@ -15,13 +15,13 @@ type Service struct {
 	imageName         string
 	currentVersion    string
 	availableVersions []string
-	appConfig         interface{}
+	appConfig         *interface{}
 	podInstances      map[string]interfaces.PodInstance
 	netService        *corev1.Service
-	serviceData       interface{}
+	serviceData       *interface{}
 }
 
-func NewService(name string, serviceType string, status string, imageName string, currentVersion string, availableVersions []string, serviceData interface{}) *Service {
+func NewService(name string, serviceType string, status string, imageName string, currentVersion string, availableVersions []string, serviceData *interface{}) *Service {
 	return &Service{
 		name:              name,
 		serviceType:       serviceType,
@@ -34,7 +34,7 @@ func NewService(name string, serviceType string, status string, imageName string
 	}
 }
 
-func CreateNewService(name string, serviceType string, serviceData interface{}) *Service {
+func CreateNewService(name string, serviceType string, serviceData *interface{}) *Service {
 	return &Service{
 		name:         name,
 		serviceType:  serviceType,
@@ -87,11 +87,11 @@ func (service *Service) AddVersion(version string) {
 	service.availableVersions = append(service.availableVersions, version)
 }
 
-func (service *Service) AppConfig() interface{} {
+func (service *Service) AppConfig() *interface{} {
 	return service.appConfig
 }
 
-func (service *Service) SetAppConfig(config interface{}) {
+func (service *Service) SetAppConfig(config *interface{}) {
 	service.appConfig = config
 }
 
@@ -135,31 +135,41 @@ func (service *Service) RemoveNetService() {
 	service.netService = nil
 }
 
-func (service *Service) ServiceData() interface{} {
+func (service *Service) ServiceData() *interface{} {
 	return service.serviceData
 }
 
-func (service *Service) Build(printer interfaces.Printer) {
-	data := service.serviceData
-	data.(interfaces.Data).Build(service, printer)
+func (service *Service) Build(printer interfaces.Printer, imageManager interfaces.ImageManager, serviceManager interfaces.ServiceManager) {
+	data := *service.serviceData
+	data.(interfaces.Data).Build(service, printer, imageManager, serviceManager)
 }
 
-func (service *Service) Update(printer interfaces.Printer) {
-	data := service.serviceData
-	data.(interfaces.Data).Update(service, printer)
+func (service *Service) Update(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
+	data := *service.serviceData
+	data.(interfaces.Data).Update(service, printer, clusterManager)
 }
 
-func (service *Service) Stop(printer interfaces.Printer) {
-	data := service.serviceData
-	data.(interfaces.Data).Stop(service, printer)
+func (service *Service) Stop(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
+	data := *service.serviceData
+	data.(interfaces.Data).Stop(service, printer, clusterManager)
 }
 
-func (service *Service) Start(printer interfaces.Printer) {
-	data := service.serviceData
-	data.(interfaces.Data).Start(service, printer)
+func (service *Service) Start(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
+	data := *service.serviceData
+	data.(interfaces.Data).Start(service, printer, clusterManager)
 }
 
-func (service *Service) Deploy(printer interfaces.Printer) {
-	data := service.serviceData
-	data.(interfaces.Data).Deploy(service, printer)
+func (service *Service) Deploy(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
+	data := *service.serviceData
+	data.(interfaces.Data).Deploy(service, printer, clusterManager)
+	service.updatePodInstances(clusterManager)
+}
+
+func (service *Service) updatePodInstances(clusterManager interfaces.ClusterManager) {
+	pods := clusterManager.GetPods("app=" + service.Name())
+	if len(pods) != 0 {
+		for _, pod := range pods {
+			service.AddPodInstance(pod.Name, &pod, string(pod.Status.Phase))
+		}
+	}
 }

@@ -59,7 +59,7 @@ func (manager *ClusterManager) getNamespace() {
 }
 
 func (manager *ClusterManager) CreateDeployment(deployment *appsv1.Deployment) *appsv1.Deployment {
-	createdDeployment, err := manager.clientset.AppsV1().Deployments(manager.namespace.GetNamespace()).Create(context.Background(), deployment, metav1.CreateOptions{})
+	createdDeployment, err := manager.clientset.AppsV1().Deployments(manager.namespace.Name).Create(context.Background(), deployment, metav1.CreateOptions{})
 	if err != nil {
 		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
 		return nil
@@ -68,7 +68,7 @@ func (manager *ClusterManager) CreateDeployment(deployment *appsv1.Deployment) *
 }
 
 func (manager *ClusterManager) UpdateDeployment(deployment *appsv1.Deployment) {
-	_, err := manager.clientset.AppsV1().Deployments(manager.namespace.GetNamespace()).Update(context.Background(), deployment, metav1.UpdateOptions{})
+	_, err := manager.clientset.AppsV1().Deployments(manager.namespace.Name).Update(context.Background(), deployment, metav1.UpdateOptions{})
 	if err != nil {
 		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
 		return
@@ -76,7 +76,7 @@ func (manager *ClusterManager) UpdateDeployment(deployment *appsv1.Deployment) {
 }
 
 func (manager *ClusterManager) DeleteDeployment(name string) {
-	err := manager.clientset.AppsV1().Deployments(manager.namespace.GetNamespace()).Delete(context.Background(), name, metav1.DeleteOptions{})
+	err := manager.clientset.AppsV1().Deployments(manager.namespace.Name).Delete(context.Background(), name, metav1.DeleteOptions{})
 	if err != nil {
 		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
 		return
@@ -84,7 +84,7 @@ func (manager *ClusterManager) DeleteDeployment(name string) {
 }
 
 func (manager *ClusterManager) GetDeployment(name string) *appsv1.Deployment {
-	deployment, err := manager.clientset.AppsV1().Deployments(manager.namespace.GetNamespace()).Get(context.Background(), name, metav1.GetOptions{})
+	deployment, err := manager.GetDeploymentOrErr(name)
 	if err != nil {
 		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
 		return nil
@@ -92,8 +92,16 @@ func (manager *ClusterManager) GetDeployment(name string) *appsv1.Deployment {
 	return deployment
 }
 
+func (manager *ClusterManager) GetDeploymentOrErr(name string) (*appsv1.Deployment, error) {
+	deployment, err := manager.clientset.AppsV1().Deployments(manager.namespace.Name).Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return deployment, nil
+}
+
 func (manager *ClusterManager) CreateStatefulSet(statefulset *appsv1.StatefulSet) *appsv1.StatefulSet {
-	createdStatefulSet, err := manager.clientset.AppsV1().StatefulSets(manager.namespace.GetNamespace()).Create(context.Background(), statefulset, metav1.CreateOptions{})
+	createdStatefulSet, err := manager.clientset.AppsV1().StatefulSets(manager.namespace.Name).Create(context.Background(), statefulset, metav1.CreateOptions{})
 	if err != nil {
 		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
 		return nil
@@ -102,7 +110,7 @@ func (manager *ClusterManager) CreateStatefulSet(statefulset *appsv1.StatefulSet
 }
 
 func (manager *ClusterManager) UpdateStatefulSet(statefulset *appsv1.StatefulSet) {
-	_, err := manager.clientset.AppsV1().StatefulSets(manager.namespace.GetNamespace()).Update(context.Background(), statefulset, metav1.UpdateOptions{})
+	_, err := manager.clientset.AppsV1().StatefulSets(manager.namespace.Name).Update(context.Background(), statefulset, metav1.UpdateOptions{})
 	if err != nil {
 		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
 		return
@@ -110,7 +118,7 @@ func (manager *ClusterManager) UpdateStatefulSet(statefulset *appsv1.StatefulSet
 }
 
 func (manager *ClusterManager) DeleteStatefulSet(name string) {
-	err := manager.clientset.AppsV1().StatefulSets(manager.namespace.GetNamespace()).Delete(context.Background(), name, metav1.DeleteOptions{})
+	err := manager.clientset.AppsV1().StatefulSets(manager.namespace.Name).Delete(context.Background(), name, metav1.DeleteOptions{})
 	if err != nil {
 		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
 		return
@@ -118,7 +126,7 @@ func (manager *ClusterManager) DeleteStatefulSet(name string) {
 }
 
 func (manager *ClusterManager) GetStatefulSet(name string) *appsv1.StatefulSet {
-	statefulset, err := manager.clientset.AppsV1().StatefulSets(manager.namespace.GetNamespace()).Get(context.Background(), name, metav1.GetOptions{})
+	statefulset, err := manager.GetStatefulSetOrErr(name)
 	if err != nil {
 		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
 		return nil
@@ -126,8 +134,16 @@ func (manager *ClusterManager) GetStatefulSet(name string) *appsv1.StatefulSet {
 	return statefulset
 }
 
+func (manager *ClusterManager) GetStatefulSetOrErr(name string) (*appsv1.StatefulSet, error) {
+	statefulset, err := manager.clientset.AppsV1().StatefulSets(manager.namespace.Name).Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return statefulset, err
+}
+
 func (manager *ClusterManager) CreateService(service *corev1.Service) *corev1.Service {
-	createdService, err := manager.clientset.CoreV1().Services(manager.namespace.GetNamespace()).Create(context.Background(), service, metav1.CreateOptions{})
+	createdService, err := manager.clientset.CoreV1().Services(manager.namespace.Name).Create(context.Background(), service, metav1.CreateOptions{})
 	if err != nil {
 		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
 		return nil
@@ -136,7 +152,7 @@ func (manager *ClusterManager) CreateService(service *corev1.Service) *corev1.Se
 }
 
 func (manager *ClusterManager) UpdateService(service *corev1.Service) {
-	_, err := manager.clientset.CoreV1().Services(manager.namespace.GetNamespace()).Update(context.Background(), service, metav1.UpdateOptions{})
+	_, err := manager.clientset.CoreV1().Services(manager.namespace.Name).Update(context.Background(), service, metav1.UpdateOptions{})
 	if err != nil {
 		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
 		return
@@ -144,7 +160,7 @@ func (manager *ClusterManager) UpdateService(service *corev1.Service) {
 }
 
 func (manager *ClusterManager) DeleteService(name string) {
-	err := manager.clientset.CoreV1().Services(manager.namespace.GetNamespace()).Delete(context.Background(), name, metav1.DeleteOptions{})
+	err := manager.clientset.CoreV1().Services(manager.namespace.Name).Delete(context.Background(), name, metav1.DeleteOptions{})
 	if err != nil {
 		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
 		return
@@ -152,7 +168,7 @@ func (manager *ClusterManager) DeleteService(name string) {
 }
 
 func (manager *ClusterManager) GetService(name string) *corev1.Service {
-	service, err := manager.clientset.CoreV1().Services(manager.namespace.GetNamespace()).Get(context.Background(), name, metav1.GetOptions{})
+	service, err := manager.GetServiceOrErr(name)
 	if err != nil {
 		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
 		return nil
@@ -160,8 +176,16 @@ func (manager *ClusterManager) GetService(name string) *corev1.Service {
 	return service
 }
 
-func (manager *ClusterManager) CreateConfigMap(service *corev1.ConfigMap) *corev1.ConfigMap {
-	createdConfigMap, err := manager.clientset.CoreV1().ConfigMaps(manager.namespace.GetNamespace()).Create(context.Background(), service, metav1.CreateOptions{})
+func (manager *ClusterManager) GetServiceOrErr(name string) (*corev1.Service, error) {
+	service, err := manager.clientset.CoreV1().Services(manager.namespace.Name).Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return service, nil
+}
+
+func (manager *ClusterManager) CreateConfigMap(configmap *corev1.ConfigMap) *corev1.ConfigMap {
+	createdConfigMap, err := manager.clientset.CoreV1().ConfigMaps(manager.namespace.Name).Create(context.Background(), configmap, metav1.CreateOptions{})
 	if err != nil {
 		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
 		return nil
@@ -169,8 +193,8 @@ func (manager *ClusterManager) CreateConfigMap(service *corev1.ConfigMap) *corev
 	return createdConfigMap
 }
 
-func (manager *ClusterManager) UpdateConfigMap(service *corev1.ConfigMap) {
-	_, err := manager.clientset.CoreV1().ConfigMaps(manager.namespace.GetNamespace()).Update(context.Background(), service, metav1.UpdateOptions{})
+func (manager *ClusterManager) UpdateConfigMap(configmap *corev1.ConfigMap) {
+	_, err := manager.clientset.CoreV1().ConfigMaps(manager.namespace.Name).Update(context.Background(), configmap, metav1.UpdateOptions{})
 	if err != nil {
 		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
 		return
@@ -178,7 +202,7 @@ func (manager *ClusterManager) UpdateConfigMap(service *corev1.ConfigMap) {
 }
 
 func (manager *ClusterManager) DeleteConfigMap(name string) {
-	err := manager.clientset.CoreV1().ConfigMaps(manager.namespace.GetNamespace()).Delete(context.Background(), name, metav1.DeleteOptions{})
+	err := manager.clientset.CoreV1().ConfigMaps(manager.namespace.Name).Delete(context.Background(), name, metav1.DeleteOptions{})
 	if err != nil {
 		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
 		return
@@ -186,12 +210,63 @@ func (manager *ClusterManager) DeleteConfigMap(name string) {
 }
 
 func (manager *ClusterManager) GetConfigMap(name string) *corev1.ConfigMap {
-	configmap, err := manager.clientset.CoreV1().ConfigMaps(manager.namespace.GetNamespace()).Get(context.Background(), name, metav1.GetOptions{})
+	configmap, err := manager.GetConfigMapOrErr(name)
 	if err != nil {
 		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
 		return nil
 	}
 	return configmap
+}
+
+func (manager *ClusterManager) GetConfigMapOrErr(name string) (*corev1.ConfigMap, error) {
+	configmap, err := manager.clientset.CoreV1().ConfigMaps(manager.namespace.Name).Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return configmap, nil
+}
+
+func (manager *ClusterManager) CreateSecret(secret *corev1.Secret) *corev1.Secret {
+	createdSecret, err := manager.clientset.CoreV1().Secrets(manager.namespace.Name).Create(context.Background(), secret, metav1.CreateOptions{})
+	if err != nil {
+		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
+		manager.printer.PrintColored("Could not create secret", manager.service, types.Red)
+		return nil
+	}
+	return createdSecret
+}
+
+func (manager *ClusterManager) UpdateSecret(secret *corev1.Secret) {
+	_, err := manager.clientset.CoreV1().Secrets(manager.namespace.Name).Update(context.Background(), secret, metav1.UpdateOptions{})
+	if err != nil {
+		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
+		return
+	}
+}
+
+func (manager *ClusterManager) DeleteSecret(name string) {
+	err := manager.clientset.CoreV1().Secrets(manager.namespace.Name).Delete(context.Background(), name, metav1.DeleteOptions{})
+	if err != nil {
+		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
+		return
+	}
+}
+
+func (manager *ClusterManager) GetSecret(name string) *corev1.Secret {
+	secret, err := manager.GetSecretOrErr(name)
+	if err != nil {
+		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
+		return nil
+	}
+	return secret
+}
+
+func (manager *ClusterManager) GetSecretOrErr(name string) (*corev1.Secret, error) {
+	secret, err := manager.clientset.CoreV1().Secrets(manager.namespace.Name).Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return secret, nil
 }
 
 func (manager *ClusterManager) GetPods(labelSelector string) []corev1.Pod {
