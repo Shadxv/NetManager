@@ -12,6 +12,7 @@ type RedisConfig struct {
 	DockerImage     string `json:"docker-image"`
 	Version         string `json:"version"`
 	Port            int    `json:"port"`
+	ExternalPort    int    `json:"external-port"`
 	Password        string `json:"password"`
 	MaxMemory       string `json:"max-memory"`
 	MaxMemoryPolicy string `json:"max-memory-policy"`
@@ -21,7 +22,8 @@ func NewDefaultRedisConfig() *RedisConfig {
 	return &RedisConfig{
 		DockerImage:     "redis",
 		Version:         "alpine",
-		Port:            6379,
+		Port:            6378,
+		ExternalPort:    31999,
 		Password:        "",
 		MaxMemory:       "256mb",
 		MaxMemoryPolicy: "allkeys-lru",
@@ -50,6 +52,10 @@ func (config *RedisConfig) GetVersion() string {
 
 func (config *RedisConfig) GetPort() int {
 	return config.Port
+}
+
+func (config *RedisConfig) GetExternalPort() int {
+	return config.ExternalPort
 }
 
 func (config *RedisConfig) GetPassword() string {

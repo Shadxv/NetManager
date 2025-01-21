@@ -281,3 +281,23 @@ func (manager *ClusterManager) GetPods(labelSelector string) []corev1.Pod {
 
 	return pods.Items
 }
+
+func (manager *ClusterManager) GetPodsOrErr(labelSelector string) ([]corev1.Pod, error) {
+	pods, err := manager.clientset.CoreV1().Pods(manager.namespace.Namespace).List(context.Background(), metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+
+	if err != nil {
+		return make([]corev1.Pod, 0), err
+	}
+
+	return pods.Items, nil
+}
+
+func (manager *ClusterManager) GetNodes() ([]corev1.Node, error) {
+	nodes, err := manager.clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return nodes.Items, nil
+}

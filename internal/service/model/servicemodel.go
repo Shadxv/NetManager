@@ -152,6 +152,7 @@ func (service *Service) Update(printer interfaces.Printer, clusterManager interf
 func (service *Service) Stop(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
 	data := *service.serviceData
 	data.(interfaces.Data).Stop(service, printer, clusterManager)
+	service.SetStatus(types.Stopped)
 }
 
 func (service *Service) Start(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {

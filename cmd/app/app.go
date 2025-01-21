@@ -6,6 +6,7 @@ import (
 	dockerManager "NetManager/internal/docker/manager"
 	harborModel "NetManager/internal/docker/model"
 	"NetManager/internal/kubernetes"
+	redisModel "NetManager/internal/redis/model"
 	serviceManager "NetManager/internal/service/manager"
 	"sync"
 )
@@ -42,7 +43,6 @@ func main() {
 		Console.CloseGracefully("App is shutting down...")
 		return
 	}
-	//KubernetesClient.DeployRedis()
 
 	if &(Console.CommandManager) == nil {
 		Console.CloseGracefully("App is shutting down...")
@@ -54,6 +54,13 @@ func main() {
 	harborModel.CreateHarborService(
 		Console,
 		ConfigManager.GetHarborConfig(),
+		ServiceManager,
+		KubernetesClient.ClusterManager(),
+	)
+
+	redisModel.CreateNewRedisService(
+		Console,
+		ConfigManager.GetRedisConfig(),
 		ServiceManager,
 		KubernetesClient.ClusterManager(),
 	)

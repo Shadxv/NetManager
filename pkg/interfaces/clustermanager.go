@@ -37,4 +37,7 @@ type ClusterManager interface {
 	GetSecretOrErr(name string) (*corev1.Secret, error)
 
 	GetPods(labelSelector string) []corev1.Pod
+	GetPodsOrErr(labelSelector string) ([]corev1.Pod, error)
+
+	GetNodes() ([]corev1.Node, error)
 }
