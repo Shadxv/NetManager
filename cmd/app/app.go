@@ -6,6 +6,7 @@ import (
 	dockerManager "NetManager/internal/docker/manager"
 	harborModel "NetManager/internal/docker/model"
 	"NetManager/internal/kubernetes"
+	mongodbModel "NetManager/internal/mongodb/model"
 	redisModel "NetManager/internal/redis/model"
 	serviceManager "NetManager/internal/service/manager"
 	"sync"
@@ -63,6 +64,13 @@ func main() {
 	redisModel.CreateNewRedisService(
 		Console,
 		ConfigManager.GetRedisConfig(),
+		ServiceManager,
+		KubernetesClient.ClusterManager(),
+	)
+
+	mongodbModel.CreateNewMongoService(
+		Console,
+		ConfigManager.GetMongoConfig(),
 		ServiceManager,
 		KubernetesClient.ClusterManager(),
 	)

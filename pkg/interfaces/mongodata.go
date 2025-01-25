@@ -10,3 +10,11 @@ type MongoData interface {
 	InternalMongoIp() string
 	ExternalMongoIp() string
 }
+
+func GetMongoData(service ServiceModel) MongoData {
+	data := *service.ServiceData()
+	if data, ok := data.(MongoData); ok {
+		return data
+	}
+	return nil
+}
