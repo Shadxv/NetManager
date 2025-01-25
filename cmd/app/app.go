@@ -11,6 +11,8 @@ import (
 	"sync"
 )
 
+// TODO: Later add helm client to auto deploy charts like harbor and longhorn
+
 var Console *cli.Console
 var KubernetesClient *kubernetes.Client
 var ConfigManager *cmdManager.ConfigManager

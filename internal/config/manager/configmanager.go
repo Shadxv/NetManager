@@ -16,6 +16,7 @@ type ConfigManager struct {
 	mainConfig   *configModel.MainConfig
 	redisConfig  *configModel.RedisConfig
 	harborConfig *configModel.HarborConfig
+	mongoConfig  *configModel.MongoConfig
 }
 
 func NewConfigManager(printer interfaces.Printer) *ConfigManager {
@@ -36,11 +37,16 @@ func (configManager *ConfigManager) GetHarborConfig() interfaces.HarborConfig {
 	return configManager.harborConfig
 }
 
+func (configManager *ConfigManager) GetMongoConfig() interfaces.MongoConfig {
+	return configManager.mongoConfig
+}
+
 func (configManager *ConfigManager) Init() {
 	configManager.loadFolderStructure()
 	configManager.loadMainConfigFile()
 	configManager.loadRedisConfigFile()
 	configManager.loadHarborConfigFile()
+	configManager.loadMongoConfigFile()
 }
 
 func (configManager *ConfigManager) loadFolderStructure() {
@@ -129,6 +135,28 @@ func (configManager *ConfigManager) loadHarborConfigFile() {
 
 	err = json.Unmarshal(fileData, &configManager.harborConfig)
 	if handler.HandleError(configManager.printer, "Error occured during loading Harbor config.", err, configManager.printer.Service(), true) {
+		return
+	}
+}
+
+func (configManager *ConfigManager) loadMongoConfigFile() {
+	filePath := filepath.Join("config", "mongo.json")
+	configManager.printer.Print("Loading MongoDB config file...", configManager.printer.Service())
+
+	_, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		configManager.mongoConfig = configModel.CreateDefaultMongoConfig(configManager.printer)
+		return
+	}
+
+	fileData, err := os.ReadFile(filePath)
+
+	if handler.HandleError(configManager.printer, "Error occured during loading MongoDB config.", err, configManager.printer.Service(), true) {
+		return
+	}
+
+	err = json.Unmarshal(fileData, &configManager.mongoConfig)
+	if handler.HandleError(configManager.printer, "Error occured during loading MongoDB config.", err, configManager.printer.Service(), true) {
 		return
 	}
 }

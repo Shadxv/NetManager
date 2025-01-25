@@ -30,7 +30,7 @@ func CreateDefaultHarborConfigFile(printer interfaces.Printer) *HarborConfig {
 
 	filePath := filepath.Join("config", "harbor.json")
 	err := os.WriteFile(filePath, jsonData, 0644)
-	handler.HandleError(printer, "Error occured during loading config.", err, printer.Service(), true)
+	handler.HandleError(printer, "Error occured during loading Harbor config.", err, printer.Service(), true)
 
 	return config
 }

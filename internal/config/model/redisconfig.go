@@ -37,7 +37,7 @@ func CreateDefaultRedisConfig(printer interfaces.Printer) *RedisConfig {
 	filePath := filepath.Join("config", "redis.json")
 
 	err := os.WriteFile(filePath, jsonData, 0644)
-	handler.HandleError(printer, "Error occured during loading redis config.", err, printer.Service(), true)
+	handler.HandleError(printer, "Error occured during loading Redis config.", err, printer.Service(), true)
 
 	return config
 }

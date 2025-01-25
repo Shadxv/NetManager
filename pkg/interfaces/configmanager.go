@@ -5,4 +5,5 @@ type ConfigManager interface {
 	GetMainConfig() MainConfig
 	GetRedisConfig() RedisConfig
 	GetHarborConfig() HarborConfig
+	GetMongoConfig() MongoConfig
 }
