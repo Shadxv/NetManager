@@ -3,7 +3,6 @@ package model
 import (
 	"NetManager/pkg/interfaces"
 	"NetManager/pkg/types"
-	"encoding/base64"
 	"fmt"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -18,24 +17,26 @@ import (
 type MongoData struct {
 	port            int
 	externalPort    int
-	username        string
-	password        string
+	rootUsername    string
+	rootPassword    string
+	serviceUsername string
+	servicePassword string
 	authRequired    bool
-	authorization   bool
 	internalMongoIp string
 	externalMongoIp string
 	internalURI     string
 	externalURI     string
 }
 
-func NewMongoData(port int, externalPort int, username string, password string, authRequired bool, authorization bool) *MongoData {
+func NewMongoData(port int, externalPort int, rootUsername string, rootPassword string, serviceUsername string, servicePassword string, authRequired bool) *MongoData {
 	return &MongoData{
-		port:          port,
-		externalPort:  externalPort,
-		username:      username,
-		password:      password,
-		authRequired:  authRequired,
-		authorization: authorization,
+		port:            port,
+		externalPort:    externalPort,
+		rootUsername:    rootUsername,
+		rootPassword:    rootPassword,
+		serviceUsername: serviceUsername,
+		servicePassword: servicePassword,
+		authRequired:    authRequired,
 	}
 }
 
@@ -47,20 +48,24 @@ func (data *MongoData) ExternalPort() int {
 	return data.externalPort
 }
 
-func (data *MongoData) Username() string {
-	return data.username
+func (data *MongoData) RootUsername() string {
+	return data.rootUsername
 }
 
-func (data *MongoData) Password() string {
-	return data.password
+func (data *MongoData) RootPassword() string {
+	return data.rootPassword
+}
+
+func (data *MongoData) ServiceUsername() string {
+	return data.serviceUsername
+}
+
+func (data *MongoData) ServicePassword() string {
+	return data.servicePassword
 }
 
 func (data *MongoData) AuthRequired() bool {
 	return data.authRequired
-}
-
-func (data *MongoData) Authorization() bool {
-	return data.authorization
 }
 
 func (data *MongoData) InternalMongoIp() string {
@@ -82,7 +87,7 @@ func (data *MongoData) ExternalURI() string {
 func (data *MongoData) buildURI(ip string, port int) string {
 	auth := ""
 	if data.authRequired {
-		auth = fmt.Sprintf("%s:%s@", data.username, data.password)
+		auth = fmt.Sprintf("%s:%s@", data.serviceUsername, data.servicePassword)
 	}
 
 	uri := fmt.Sprintf("mongodb://%s%s:%d",
@@ -201,8 +206,10 @@ func (data *MongoData) generateCredentialsSecret(serviceModel interfaces.Service
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
-			"MONGO_INITDB_ROOT_USERNAME": []byte(base64.StdEncoding.EncodeToString([]byte(data.Username()))),
-			"MONGO_INITDB_ROOT_PASSWORD": []byte(base64.StdEncoding.EncodeToString([]byte(data.Password()))),
+			"MONGO_INITDB_ROOT_USERNAME": []byte(data.RootUsername()),
+			"MONGO_INITDB_ROOT_PASSWORD": []byte(data.RootPassword()),
+			"MONGO_SERVICE_USERNAME":     []byte(data.ServiceUsername()),
+			"MONGO_SERVICE_PASSWORD":     []byte(data.ServicePassword()),
 		},
 	}
 }
@@ -272,19 +279,7 @@ func (data *MongoData) generateConfigMap(serviceModel interfaces.ServiceModel) *
 			"mongod.conf": fmt.Sprintf(`
 net:
     port: %d
-security:
-    authorization: %t
-    authentication: %t
-`, data.port, data.authorization, data.authRequired),
-			"init.js": `
-db.createUser({
-    user: process.env.MONGO_INITDB_ROOT_USERNAME,
-    pwd: process.env.MONGO_INITDB_ROOT_PASSWORD,
-    roles: [
-        { role: "userAdminAnyDatabase", db: "admin" },
-        { role: "readWriteAnyDatabase", db: "admin" }
-    ]
-})`,
+`, data.port),
 		},
 	}
 }
@@ -294,34 +289,38 @@ func (data *MongoData) generateStatefulSet(serviceModel interfaces.ServiceModel)
 		"app": serviceModel.Name(),
 	}
 
+	startCommands := []string{
+		"mongod",
+		"--config=/etc/mongod.conf",
+		"--bind_ip_all",
+	}
+
+	if data.authRequired {
+		startCommands = append(startCommands, "--auth")
+	}
+
 	return &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   serviceModel.Name(),
 			Labels: labels,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			ServiceName: serviceModel.Name() + "-internal",
-			Replicas:    pointer.Int32(1),
+			Replicas: pointer.Int32(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labels,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: labels,
-					Annotations: map[string]string{
-						"longhornio/disable-auto-mount": "false",
-						"longhornio/node-selector":      "kubernetes.io/hostname: minikube",
-					},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
-							Name:  "mongodb",
+							Name:  serviceModel.Name() + "-container",
 							Image: "mongo:latest",
 							Ports: []corev1.ContainerPort{
 								{
 									ContainerPort: int32(data.Port()),
-									Protocol:      corev1.ProtocolTCP,
 								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
@@ -335,24 +334,44 @@ func (data *MongoData) generateStatefulSet(serviceModel interfaces.ServiceModel)
 									MountPath: "/etc/mongod.conf",
 									SubPath:   "mongod.conf",
 								},
-								{
-									Name:      "mongodb-config",
-									MountPath: "/docker-entrypoint-initdb.d/init.js",
-									SubPath:   "init.js",
-								},
+								//{
+								//	Name:      "mongodb-credentials",
+								//	MountPath: "/etc/mongodb-credentials",
+								//	ReadOnly:  true,
+								//},
 							},
-							Command: []string{
-								"mongod",
-								"--config=/etc/mongod.conf",
-							},
-							EnvFrom: []corev1.EnvFromSource{
+							Command: startCommands,
+							Env: []corev1.EnvVar{
 								{
-									SecretRef: &corev1.SecretEnvSource{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: serviceModel.Name() + "root-credentials",
+									Name: "MONGODB_INITDB_ROOT_USERNAME",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: serviceModel.Name() + "-root-credentials",
+											},
+											Key: "MONGO_INITDB_ROOT_USERNAME",
 										},
 									},
 								},
+								{
+									Name: "MONGODB_INITDB_ROOT_PASSWORD",
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: serviceModel.Name() + "-root-credentials",
+											},
+											Key: "MONGO_INITDB_ROOT_PASSWORD",
+										},
+									},
+								},
+								//{
+								//	Name:  "MONGODB_INITDB_ROOT_USERNAME_FILE",
+								//	Value: "/etc/mongodb-credentials/admin/MONGO_INITDB_ROOT_USERNAME",
+								//},
+								//{
+								//	Name:  "MONGODB_INITDB_ROOT_PASSWORD_FILE",
+								//	Value: "/etc/mongodb-credentials/admin/MONGO_INITDB_ROOT_PASSWORD",
+								//},
 							},
 						},
 					},
@@ -367,6 +386,26 @@ func (data *MongoData) generateStatefulSet(serviceModel interfaces.ServiceModel)
 								},
 							},
 						},
+						//{
+						//	Name: "mongodb-credentials",
+						//	VolumeSource: corev1.VolumeSource{
+						//		Secret: &corev1.SecretVolumeSource{
+						//			SecretName: "mongodb-root-credentials",
+						//			Items: []corev1.KeyToPath{
+						//				{
+						//					Key:  "MONGO_INITDB_ROOT_USERNAME",
+						//					Path: "admin/MONGO_INITDB_ROOT_USERNAME",
+						//					Mode: util.IntToPtr(0444),
+						//				},
+						//				{
+						//					Key:  "MONGO_INITDB_ROOT_PASSWORD",
+						//					Path: "admin/MONGO_INITDB_ROOT_PASSWORD",
+						//					Mode: util.IntToPtr(0444),
+						//				},
+						//			},
+						//		},
+						//	},
+						//},
 					},
 				},
 			},
@@ -374,21 +413,18 @@ func (data *MongoData) generateStatefulSet(serviceModel interfaces.ServiceModel)
 				{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "mongodb-data",
-						Annotations: map[string]string{
-							"longhornio/disable-frontend":  "false",
-							"longhornio/volume-scheduling": "true",
-							"longhornio/node-selector":     "kubernetes.io/hostname: minikube",
-							"longhornio/replica-count":     "1",
+						Labels: map[string]string{
+							"app": serviceModel.Name(),
 						},
 					},
 					Spec: corev1.PersistentVolumeClaimSpec{
 						AccessModes: []corev1.PersistentVolumeAccessMode{
 							corev1.ReadWriteOnce,
 						},
-						StorageClassName: pointer.String("longhorn"),
+						StorageClassName: pointer.String("rook-ceph-block"),
 						Resources: corev1.VolumeResourceRequirements{
 							Requests: corev1.ResourceList{
-								corev1.ResourceStorage: resource.MustParse("5Gi"),
+								corev1.ResourceStorage: resource.MustParse("10Gi"),
 							},
 						},
 					},

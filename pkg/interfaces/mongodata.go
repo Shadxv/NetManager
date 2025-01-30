@@ -3,10 +3,11 @@ package interfaces
 type MongoData interface {
 	Port() int
 	ExternalPort() int
-	Username() string
-	Password() string
+	RootUsername() string
+	RootPassword() string
+	ServiceUsername() string
+	ServicePassword() string
 	AuthRequired() bool
-	Authorization() bool
 	InternalMongoIp() string
 	ExternalMongoIp() string
 }

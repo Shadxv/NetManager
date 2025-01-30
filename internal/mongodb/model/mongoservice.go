@@ -15,10 +15,11 @@ func CreateNewMongoService(printer interfaces.Printer, config interfaces.MongoCo
 		NewMongoData(
 			config.GetPort(),
 			config.GetExternalPort(),
-			config.GetUsername(),
-			config.GetPassword(),
+			config.GetRootUsername(),
+			config.GetRootPassword(),
+			config.GetServiceUsername(),
+			config.GetServicePassword(),
 			config.IsAuthRequired(),
-			config.NeedsAuthorization(),
 		),
 	)
 

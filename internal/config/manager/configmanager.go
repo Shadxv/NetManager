@@ -140,7 +140,7 @@ func (configManager *ConfigManager) loadHarborConfigFile() {
 }
 
 func (configManager *ConfigManager) loadMongoConfigFile() {
-	filePath := filepath.Join("config", "mongo.json")
+	filePath := filepath.Join("config", "mongodb.json")
 	configManager.printer.Print("Loading MongoDB config file...", configManager.printer.Service())
 
 	_, err := os.Stat(filePath)

@@ -9,22 +9,24 @@ import (
 )
 
 type MongoConfig struct {
-	Port          int    `json:"port"`
-	ExternalPort  int    `json:"external-port"`
-	Username      string `json:"username"`
-	Password      string `json:"password"`
-	AuthRequired  bool   `json:"auth-required"`
-	Authorization bool   `json:"authorization"`
+	Port            int    `json:"port"`
+	ExternalPort    int    `json:"external-port"`
+	RootUsername    string `json:"root-username"`
+	RootPassword    string `json:"root-password"`
+	ServiceUsername string `json:"service-username"`
+	ServicePassword string `json:"service-password"`
+	AuthRequired    bool   `json:"auth-required"`
 }
 
 func NewDefaultMongoConfig() *MongoConfig {
 	return &MongoConfig{
-		Port:          27017,
-		ExternalPort:  30004,
-		Username:      "netmanager",
-		Password:      "YM6EMqGQ5NyB9qp3ovkn",
-		AuthRequired:  true,
-		Authorization: true,
+		Port:            27017,
+		ExternalPort:    30004,
+		RootUsername:    "admin",
+		RootPassword:    "admin",
+		ServiceUsername: "netmanager",
+		ServicePassword: "YM6EMqGQ5NyB9qp3ovkn",
+		AuthRequired:    true,
 	}
 }
 
@@ -48,18 +50,22 @@ func (config *MongoConfig) GetExternalPort() int {
 	return config.ExternalPort
 }
 
-func (config *MongoConfig) GetUsername() string {
-	return config.Username
+func (config *MongoConfig) GetRootUsername() string {
+	return config.RootUsername
 }
 
-func (config *MongoConfig) GetPassword() string {
-	return config.Password
+func (config *MongoConfig) GetRootPassword() string {
+	return config.RootPassword
+}
+
+func (config *MongoConfig) GetServiceUsername() string {
+	return config.ServiceUsername
+}
+
+func (config *MongoConfig) GetServicePassword() string {
+	return config.ServicePassword
 }
 
 func (config *MongoConfig) IsAuthRequired() bool {
 	return config.AuthRequired
-}
-
-func (config *MongoConfig) NeedsAuthorization() bool {
-	return config.Authorization
 }

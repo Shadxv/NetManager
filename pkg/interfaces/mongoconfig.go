@@ -3,8 +3,9 @@ package interfaces
 type MongoConfig interface {
 	GetPort() int
 	GetExternalPort() int
-	GetUsername() string
-	GetPassword() string
+	GetRootUsername() string
+	GetRootPassword() string
+	GetServiceUsername() string
+	GetServicePassword() string
 	IsAuthRequired() bool
-	NeedsAuthorization() bool
 }
