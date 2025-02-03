@@ -51,7 +51,7 @@ func main() {
 		Console.CloseGracefully("App is shutting down...")
 		return
 	}
-	ServiceManager = serviceManager.CreateNewServiceManager(Console)
+	ServiceManager = serviceManager.CreateNewServiceManager(Console, ConfigManager)
 	ServiceManager.Init(Console.CommandManager, ImageManager, KubernetesClient)
 
 	harborModel.CreateHarborService(

@@ -9,6 +9,7 @@ import (
 
 type CreateSubcommand struct {
 	Printer        interfaces.Printer
+	ConfigManager  interfaces.ConfigManager
 	ServiceManager interfaces.ServiceManager
 }
 
@@ -22,7 +23,7 @@ func (cmd *CreateSubcommand) Execute(args []string) {
 	}
 
 	name := strings.ToLower(args[0])
-	minecraft.NetServiceWizard(cmd.Printer, cmd.ServiceManager, name).Run()
+	minecraft.NetServiceWizard(cmd.Printer, cmd.ServiceManager, name, cmd.ConfigManager.GetMainConfig().GetServerGroupName()).Run()
 }
 
 func (cmd *CreateSubcommand) Name() string {

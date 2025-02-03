@@ -9,12 +9,14 @@ import (
 )
 
 type MainConfig struct {
-	Name string `json:"service-name"`
+	Name            string `json:"service-name"`
+	ServerGroupName string `json:"server-group-name"`
 }
 
 func NewDefaultMainConfig() *MainConfig {
 	return &MainConfig{
-		Name: "netmanager-service",
+		Name:            "netmanager-service",
+		ServerGroupName: "dreammc",
 	}
 }
 
@@ -32,4 +34,8 @@ func CreateDefaultMainConfig(printer interfaces.Printer) *MainConfig {
 
 func (config *MainConfig) GetName() string {
 	return config.Name
+}
+
+func (config *MainConfig) GetServerGroupName() string {
+	return config.ServerGroupName
 }

@@ -9,6 +9,7 @@ import (
 type ServiceCommand struct {
 	Printer          interfaces.Printer
 	ServiceManager   interfaces.ServiceManager
+	ConfigManager    interfaces.ConfigManager
 	ImageManager     interfaces.ImageManager
 	KubernetesClient interfaces.KubernetesClient
 }
@@ -28,6 +29,7 @@ func (cmd *ServiceCommand) Description() string {
 func (cmd *ServiceCommand) Subcommands() map[string]interfaces.Command {
 	createSubcommand := servicesub.CreateSubcommand{
 		Printer:        cmd.Printer,
+		ConfigManager:  cmd.ConfigManager,
 		ServiceManager: cmd.ServiceManager,
 	}
 

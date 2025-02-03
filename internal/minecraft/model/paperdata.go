@@ -11,17 +11,26 @@ import (
 )
 
 type PaperData struct {
+	groupName   string
 	version     string
 	build       int
 	minReplicas int
+	mongodbURI  string
+	redisURI    string
 }
 
-func NewPaperData(version string, build int, minReplicas int) *PaperData {
+func NewPaperData(groupName string, version string, build int, minReplicas int, mongodbURI string, redisURI string) *PaperData {
 	return &PaperData{
+		groupName:   groupName,
 		version:     version,
 		build:       build,
 		minReplicas: minReplicas,
+		mongodbURI:  mongodbURI,
+		redisURI:    redisURI,
 	}
+}
+func (data *PaperData) GroupName() string {
+	return data.groupName
 }
 
 func (data *PaperData) Version() string {
@@ -34,6 +43,14 @@ func (data *PaperData) BuildNumber() int {
 
 func (data *PaperData) MinReplicas() int {
 	return data.minReplicas
+}
+
+func (data *PaperData) MongoDBURI() string {
+	return data.mongodbURI
+}
+
+func (data *PaperData) RedisURI() string {
+	return data.redisURI
 }
 
 func (data *PaperData) Build(serviceModel interfaces.ServiceModel, printer interfaces.Printer, imageManager interfaces.ImageManager, serviceManager interfaces.ServiceManager) {
@@ -108,6 +125,32 @@ func (data *PaperData) generateStatefulSet(serviceModel interfaces.ServiceModel)
 								},
 							},
 							ImagePullPolicy: "Always",
+							Env: []corev1.EnvVar{
+								{
+									Name:  "MONGODB_URI",
+									Value: data.mongodbURI,
+								},
+								{
+									Name:  "REDIS_URI",
+									Value: data.redisURI,
+								},
+								{
+									Name:  "GROUP_NAME",
+									Value: data.groupName,
+								},
+								{
+									Name:  "SERVICE_NAME",
+									Value: serviceModel.Name(),
+								},
+								{
+									Name: "SERVER_ID",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+							},
 						},
 					},
 					ImagePullSecrets: []corev1.LocalObjectReference{

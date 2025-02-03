@@ -16,21 +16,24 @@ import (
 )
 
 type ServiceManager struct {
-	printer  interfaces.Printer
-	services map[string]interfaces.ServiceModel
+	printer       interfaces.Printer
+	configManager interfaces.ConfigManager
+	services      map[string]interfaces.ServiceModel
 }
 
-func NewServiceManager(printer interfaces.Printer, services map[string]interfaces.ServiceModel) *ServiceManager {
+func NewServiceManager(printer interfaces.Printer, configManager interfaces.ConfigManager, services map[string]interfaces.ServiceModel) *ServiceManager {
 	return &ServiceManager{
-		printer:  printer,
-		services: services,
+		printer:       printer,
+		configManager: configManager,
+		services:      services,
 	}
 }
 
-func CreateNewServiceManager(printer interfaces.Printer) *ServiceManager {
+func CreateNewServiceManager(printer interfaces.Printer, configManager interfaces.ConfigManager) *ServiceManager {
 	return &ServiceManager{
-		printer:  printer,
-		services: make(map[string]interfaces.ServiceModel),
+		printer:       printer,
+		configManager: configManager,
+		services:      make(map[string]interfaces.ServiceModel),
 	}
 }
 
@@ -38,6 +41,7 @@ func (manager *ServiceManager) Init(commandManager interfaces.CommandManager, im
 	commandManager.RegisterCommand(&commands.ServiceCommand{
 		Printer:          manager.printer,
 		ServiceManager:   manager,
+		ConfigManager:    manager.configManager,
 		ImageManager:     imageManager,
 		KubernetesClient: kubernetesClient,
 	})

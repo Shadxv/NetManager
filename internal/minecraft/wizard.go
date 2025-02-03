@@ -25,16 +25,18 @@ const (
 type ServiceWizard struct {
 	printer         interfaces.Printer
 	serviceManager  interfaces.ServiceManager
+	groupName       string
 	serviceName     string
 	fetchedVersions []string
 	fetchedBuilds   []int
 	serviceType     string
 }
 
-func NetServiceWizard(printer interfaces.Printer, serviceManager interfaces.ServiceManager, serviceName string) *ServiceWizard {
+func NetServiceWizard(printer interfaces.Printer, serviceManager interfaces.ServiceManager, serviceName string, groupName string) *ServiceWizard {
 	return &ServiceWizard{
 		printer:        printer,
 		serviceManager: serviceManager,
+		groupName:      groupName,
 		serviceName:    serviceName,
 	}
 }
@@ -130,7 +132,9 @@ func (wizard *ServiceWizard) paperConfiguration() (int, interfaces.PaperData) {
 		return res, nil
 	}
 
-	return Finished, minecraftModel.NewPaperData(version, build, minReplicas)
+	mongoURI, redisURI := wizard.getURIs()
+
+	return Finished, minecraftModel.NewPaperData(wizard.groupName, version, build, minReplicas, mongoURI, redisURI)
 }
 
 func (wizard *ServiceWizard) velocityConfiguration() (int, interfaces.VelocityData) {
@@ -164,6 +168,30 @@ func (wizard *ServiceWizard) velocityConfiguration() (int, interfaces.VelocityDa
 	}
 
 	return Finished, minecraftModel.NewVelocityData(version, build, port, replicasAmount)
+}
+
+func (wizard *ServiceWizard) getURIs() (string, string) {
+	mongoService := wizard.serviceManager.GetService("mongodb")
+	if mongoService == nil {
+		return "", ""
+	}
+
+	mongoData := interfaces.GetMongoData(mongoService)
+	if mongoData == nil {
+		return "", ""
+	}
+
+	redisService := wizard.serviceManager.GetService("redis")
+	if redisService == nil {
+		return "", ""
+	}
+
+	redisData := interfaces.GetRedisData(redisService)
+	if redisData == nil {
+		return "", ""
+	}
+
+	return mongoData.InternalURI(), fmt.Sprintf("redis://:%s@%s:%d/", redisData.Password(), redisData.InternalRedisIp(), redisData.Port())
 }
 
 func (wizard *ServiceWizard) readVersion(msg string, errMsg string, invalid bool) string {
