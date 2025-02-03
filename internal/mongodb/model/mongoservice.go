@@ -5,23 +5,18 @@ import (
 	"NetManager/pkg/types"
 )
 
-func CreateNewMongoService(printer interfaces.Printer, config interfaces.MongoConfig, serviceManager interfaces.ServiceManager, clusterManager interfaces.ClusterManager) {
-	serviceModel := serviceManager.AddService(
+func CreateNewMongoService(config interfaces.MongoConfig, serviceManager interfaces.ServiceManager) {
+	serviceManager.AddService(
 		"mongodb",
 		types.MongoDB,
 		types.Starting,
 		"mongodb",
-		"latest",
+		"8.0.4",
 		NewMongoData(
-			config.GetPort(),
-			config.GetExternalPort(),
-			config.GetRootUsername(),
-			config.GetRootPassword(),
 			config.GetServiceUsername(),
 			config.GetServicePassword(),
-			config.IsAuthRequired(),
+			config.GetInternalURI(),
+			config.GetExternalURI(),
 		),
 	)
-
-	serviceModel.Deploy(printer, clusterManager)
 }

@@ -69,10 +69,8 @@ func main() {
 	)
 
 	mongodbModel.CreateNewMongoService(
-		Console,
 		ConfigManager.GetMongoConfig(),
 		ServiceManager,
-		KubernetesClient.ClusterManager(),
 	)
 
 	wg.Wait()
