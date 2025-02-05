@@ -167,7 +167,9 @@ func (wizard *ServiceWizard) velocityConfiguration() (int, interfaces.VelocityDa
 		return res, nil
 	}
 
-	return Finished, minecraftModel.NewVelocityData(version, build, port, replicasAmount)
+	mongoURI, redisURI := wizard.getURIs()
+
+	return Finished, minecraftModel.NewVelocityData(wizard.groupName, version, build, port, replicasAmount, mongoURI, redisURI)
 }
 
 func (wizard *ServiceWizard) getURIs() (string, string) {

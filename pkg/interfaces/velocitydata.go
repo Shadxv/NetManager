@@ -1,10 +1,13 @@
 package interfaces
 
 type VelocityData interface {
+	GroupName() string
 	Version() string
 	BuildNumber() int
 	Port() int
 	ReplicasAmount() int
+	MongoDBURI() string
+	RedisURI() string
 }
 
 func GetVelocityData(service ServiceModel) VelocityData {

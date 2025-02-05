@@ -173,12 +173,12 @@ func (data *PaperData) generateService(serviceModel interfaces.ServiceModel) *co
 			Selector: map[string]string{"app": serviceModel.Name()},
 			Ports: []corev1.ServicePort{
 				{
-					Port:       45565,
+					Port:       25565,
 					TargetPort: intstr.IntOrString{IntVal: 25565},
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
-			Type: corev1.ServiceTypeLoadBalancer,
+			Type: corev1.ServiceTypeClusterIP,
 		},
 	}
 }
