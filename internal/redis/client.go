@@ -22,7 +22,7 @@ type Client struct {
 	pubsub         *redis.PubSub
 }
 
-func NewClient(printer interfaces.Printer, clusterManager interfaces.ClusterManager) *Client {
+func NewRedisClient(printer interfaces.Printer, clusterManager interfaces.ClusterManager) *Client {
 	return &Client{
 		printer:        printer,
 		clusterManager: clusterManager,
@@ -57,7 +57,7 @@ func (redisClient *Client) Init(service interfaces.ServiceModel) {
 	redisClient.pubsub = redisClient.client.Subscribe(context.Background(), channels...)
 	go redisClient.listen()
 
-	redisClient.printer.Print("Successfully connected to Redis client...", redisClient.printer.Service())
+	redisClient.printer.Print("Successfully connected to Redis client.", redisClient.printer.Service())
 }
 
 func (redisClient *Client) Publish(channel string, packet interfaces.Packet) {
@@ -73,6 +73,7 @@ func (redisClient *Client) Publish(channel string, packet interfaces.Packet) {
 
 func (redisClient *Client) RegisterListener(handler interfaces.PacketHandler) {
 	redisClient.listeners[handler.GetType()] = handler
+	redisClient.codec.RegisterType(handler.GetType(), handler.GetRegistryType)
 }
 
 func (redisClient *Client) BuildChannel(groupName string, serviceName string, serviceId string, packetType string) string {
@@ -94,6 +95,9 @@ func (redisClient *Client) listen() {
 
 		if !ok || err != nil {
 			redisClient.printer.PrintColored("Unable to handle "+packetType+" packet.", redisClient.printer.Service(), types.Red)
+
+			redisClient.printer.PrintColored(msg.Payload, redisClient.printer.Service(), types.Yellow)
+
 			continue
 		}
 

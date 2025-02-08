@@ -1,7 +1,7 @@
 package types
 
 const (
-	RegisterServerRequest = "REGISTER-SERVER-REQUEST"
-	CacheIP               = "CACHE-IP"
-	RegisterServerData    = "REGISTER-SERVER-DATA"
+	RegisterServerRequest = "REGISTER_SERVER_REQUEST"
+	CacheIP               = "CACHE_IP"
+	RegisterServerData    = "REGISTER_SERVER_DATA"
 )

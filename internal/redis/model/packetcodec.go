@@ -33,3 +33,7 @@ func (codec *PacketCodec) UnmarshalPacket(packetType string, data []byte) (inter
 func (codec *PacketCodec) MarshalPacket(packet interfaces.Packet) ([]byte, error) {
 	return json.Marshal(packet)
 }
+
+func (codec *PacketCodec) RegisterType(packetType string, creator func() interfaces.Packet) {
+	codec.typeRegistry[packetType] = creator
+}

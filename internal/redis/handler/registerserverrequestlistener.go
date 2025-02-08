@@ -30,33 +30,44 @@ func (listener *RegisterServerRequestListener) GetType() string {
 func (listener *RegisterServerRequestListener) Handle(packet interfaces.Packet) error {
 	regPacket, ok := packet.(*packets.RegisterServerRequest)
 
-	service, err := listener.clusterManager.GetServiceOrErr(packet.GetData().SenderServiceName)
-	if !ok || err != nil {
+	if !ok {
+		return fmt.Errorf("error occured during casting packet")
+	}
+
+	// FIXME: Change that so it could handle multiple replicas from 1 service
+	service, err := listener.clusterManager.GetServiceOrErr(regPacket.SenderServiceName + "-service")
+	if err != nil {
 		return fmt.Errorf("error occured during casting packet")
 	}
 
 	ip := service.Spec.ClusterIP
 	port := 25565
 
-	senderChannel := listener.redisClient.BuildChannel(regPacket.Data.SenderServiceGroup, regPacket.Data.SenderServiceName, regPacket.Data.SenderServiceId, types.CacheIP)
+	senderChannel := listener.redisClient.BuildChannel(regPacket.SenderServiceGroup, regPacket.SenderServiceName, regPacket.SenderServiceId, types.CacheIP)
 	proxyChannel := listener.redisClient.BuildChannel(regPacket.ProxyGroupName, regPacket.ProxyServiceName, "*", types.RegisterServerData)
 
 	regDataPacket := packets.RegisterServerData{
-		Data:        packet.GetData(),
+		PacketData:  regPacket.PacketData,
 		AddressIP:   ip,
 		Port:        port,
-		ServiceName: regPacket.GetData().SenderServiceName,
-		ServiceId:   regPacket.GetData().SenderServiceId,
+		ServiceName: regPacket.SenderServiceName,
+		ServiceId:   regPacket.SenderServiceId,
 	}
 
+	regDataPacket.PacketType = types.RegisterServerData
+
 	cacheIP := packets.CacheIP{
-		Data:      interfaces.NewPacketData(),
-		AddressIP: ip,
-		Port:      port,
+		PacketData: interfaces.NewPacketData(types.CacheIP),
+		AddressIP:  ip,
+		Port:       port,
 	}
 
 	go listener.redisClient.Publish(senderChannel, &cacheIP)
 	go listener.redisClient.Publish(proxyChannel, &regDataPacket)
 
 	return nil
+}
+
+func (listener *RegisterServerRequestListener) GetRegistryType() interfaces.Packet {
+	return &packets.RegisterServerRequest{}
 }

@@ -6,7 +6,7 @@ import (
 )
 
 type RegisterServerData struct {
-	Data        interfaces.PacketData
+	interfaces.PacketData
 	AddressIP   string `json:"addressIP"`
 	Port        int    `json:"port"`
 	ServiceName string `json:"serviceName"`
@@ -15,8 +15,4 @@ type RegisterServerData struct {
 
 func (packet *RegisterServerData) GetType() string {
 	return types.RegisterServerData
-}
-
-func (packet *RegisterServerData) GetData() interfaces.PacketData {
-	return packet.Data
 }

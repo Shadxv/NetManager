@@ -6,15 +6,11 @@ import (
 )
 
 type CacheIP struct {
-	Data      interfaces.PacketData
+	interfaces.PacketData
 	AddressIP string `json:"addressIP"`
 	Port      int    `json:"port"`
 }
 
 func (packet *CacheIP) GetType() string {
 	return types.CacheIP
-}
-
-func (packet *CacheIP) GetData() interfaces.PacketData {
-	return packet.Data
 }

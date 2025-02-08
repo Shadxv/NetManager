@@ -197,7 +197,7 @@ WORKDIR /dreammc
 COPY %s-default/ /dreammc/
 COPY %s/ /dreammc/
 RUN echo "eula=true" > eula.txt
-CMD ["java", "-jar", "server.jar", "--nogui"]
+CMD ["java", "-jar", "-Xmx4G", "server.jar", "--nogui"]
 `, strings.ToLower(service.ServiceType()), service.Name())
 
 	out, err := os.Create(path)

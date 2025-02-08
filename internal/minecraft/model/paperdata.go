@@ -6,6 +6,7 @@ import (
 	"NetManager/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -93,7 +94,7 @@ func (data *PaperData) Deploy(serviceModel interfaces.ServiceModel, printer inte
 }
 
 func (data *PaperData) generateStatefulSet(serviceModel interfaces.ServiceModel) *appsv1.StatefulSet {
-	return &appsv1.StatefulSet{
+	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: serviceModel.Name(),
 			Labels: map[string]string{
@@ -162,6 +163,19 @@ func (data *PaperData) generateStatefulSet(serviceModel interfaces.ServiceModel)
 			},
 		},
 	}
+
+	memory, err := resource.ParseQuantity("4Gi")
+	if err != nil {
+		return statefulset
+	}
+
+	statefulset.Spec.Template.Spec.Containers[0].Resources = corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceMemory: memory,
+		},
+	}
+
+	return statefulset
 }
 
 func (data *PaperData) generateService(serviceModel interfaces.ServiceModel) *corev1.Service {

@@ -7,6 +7,7 @@ import (
 	harborModel "NetManager/internal/docker/model"
 	"NetManager/internal/kubernetes"
 	mongodbModel "NetManager/internal/mongodb/model"
+	"NetManager/internal/redis"
 	redisModel "NetManager/internal/redis/model"
 	serviceManager "NetManager/internal/service/manager"
 	"sync"
@@ -19,6 +20,7 @@ var KubernetesClient *kubernetes.Client
 var ConfigManager *cmdManager.ConfigManager
 var ServiceManager *serviceManager.ServiceManager
 var ImageManager *dockerManager.ImageManager
+var RedisClient *redis.Client
 
 func main() {
 	var wg sync.WaitGroup
@@ -72,6 +74,10 @@ func main() {
 		ConfigManager.GetMongoConfig(),
 		ServiceManager,
 	)
+
+	RedisClient = redis.NewRedisClient(Console, KubernetesClient.ClusterManager())
+	RedisClient.Init(ServiceManager.GetService("redis"))
+	defer RedisClient.Close()
 
 	wg.Wait()
 }

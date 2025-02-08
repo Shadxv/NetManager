@@ -6,13 +6,15 @@ type PacketData struct {
 	SenderServiceGroup string `json:"senderServiceGroup"`
 	SenderServiceName  string `json:"senderServiceName"`
 	SenderServiceId    string `json:"senderServiceId"`
+	PacketType         string `json:"type"`
 }
 
-func NewPacketData() PacketData {
+func NewPacketData(packetType string) PacketData {
 	return PacketData{
 		SenderServiceGroup: "netmanager",
 		SenderServiceName:  "netmanager",
 		SenderServiceId:    "*",
+		PacketType:         packetType,
 	}
 }
 

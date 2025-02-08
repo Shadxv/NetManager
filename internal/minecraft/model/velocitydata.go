@@ -2,9 +2,11 @@ package model
 
 import (
 	"NetManager/pkg/interfaces"
+	"NetManager/pkg/types"
 	"NetManager/pkg/util"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -82,11 +84,23 @@ func (data *VelocityData) Start(serviceModel interfaces.ServiceModel, printer in
 }
 
 func (data *VelocityData) Deploy(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
+	_, err := clusterManager.GetStatefulSetOrErr(serviceModel.Name())
+	if err == nil {
+		printer.PrintColored("StatefulSet has already been deployed.", printer.Service(), types.Yellow)
+	} else {
+		clusterManager.CreateStatefulSet(data.generateStatefulSet(serviceModel))
+	}
 
+	_, err = clusterManager.GetServiceOrErr(serviceModel.Name() + "-service")
+	if err == nil {
+		printer.PrintColored("Service has already been deployed.", printer.Service(), types.Yellow)
+	} else {
+		clusterManager.CreateService(data.generateService(serviceModel))
+	}
 }
 
 func (data *VelocityData) generateStatefulSet(serviceModel interfaces.ServiceModel) *appsv1.StatefulSet {
-	return &appsv1.StatefulSet{
+	statefulset := &appsv1.StatefulSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: serviceModel.Name(),
 			Labels: map[string]string{
@@ -155,6 +169,19 @@ func (data *VelocityData) generateStatefulSet(serviceModel interfaces.ServiceMod
 			},
 		},
 	}
+
+	memory, err := resource.ParseQuantity("4Gi")
+	if err != nil {
+		return statefulset
+	}
+
+	statefulset.Spec.Template.Spec.Containers[0].Resources = corev1.ResourceRequirements{
+		Limits: corev1.ResourceList{
+			corev1.ResourceMemory: memory,
+		},
+	}
+
+	return statefulset
 }
 
 func (data *VelocityData) generateService(serviceModel interfaces.ServiceModel) *corev1.Service {

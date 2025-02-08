@@ -6,15 +6,11 @@ import (
 )
 
 type RegisterServerRequest struct {
-	Data             interfaces.PacketData
-	ProxyGroupName   string `json:"proxyGroupName"`
+	interfaces.PacketData
+	ProxyGroupName   string `json:"proxyServiceGroup"`
 	ProxyServiceName string `json:"proxyServiceName"`
 }
 
 func (packet *RegisterServerRequest) GetType() string {
 	return types.RegisterServerRequest
-}
-
-func (packet *RegisterServerRequest) GetData() interfaces.PacketData {
-	return packet.Data
 }
