@@ -71,26 +71,3 @@ func (client *Client) Connect() {
 func (client *Client) ClusterManager() interfaces.ClusterManager {
 	return client.clusterManager
 }
-
-//func (client *DockerClient) DeployRedis() {
-//	configMap, deployment := config.GenerateRedisConfig(client.configManager.GetRedisConfig())
-//
-//	_, err := client.clientset.CoreV1().ConfigMaps(client.configManager.GetMainConfig().Name).Create(context.TODO(), configMap, metav1.CreateOptions{})
-//	if handler.HandleError(client.printer, "Error occured during creating redis config map.", err, client.service, false) {
-//		return
-//	}
-//
-//	_, err = client.clientset.AppsV1().Deployments(client.configManager.GetMainConfig().Name).Create(context.TODO(), deployment, metav1.CreateOptions{})
-//	if handler.HandleError(client.printer, "Error occured during redis deployment.", err, client.service, false) {
-//		return
-//	}
-//}
-//
-//func (client *DockerClient) DeployPaperService(serviceName string) {
-//	deployment := config.GeneratePaperDeployment(serviceName)
-//	_, err := client.clientset.AppsV1().Deployments(client.configManager.GetMainConfig().Name).Create(context.TODO(), deployment, metav1.CreateOptions{})
-//	if err != nil {
-//		client.printer.PrintColored("Error occured during "+serviceName+" deployment:", client.service, cli.Red)
-//		client.printer.PrintColored(err.Error(), client.service, cli.Red)
-//	}
-//}
