@@ -3,45 +3,60 @@ package manager
 import (
 	"NetManager/internal/cli/handler"
 	configModel "NetManager/internal/config/model"
+	"NetManager/internal/module"
 	"NetManager/pkg/interfaces"
 	"NetManager/pkg/types"
+	"NetManager/pkg/util"
 	"encoding/json"
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
+	"time"
 )
 
 type ConfigManager struct {
-	printer      interfaces.Printer
-	mainConfig   *configModel.MainConfig
-	redisConfig  *configModel.RedisConfig
-	harborConfig *configModel.HarborConfig
-	mongoConfig  *configModel.MongoConfig
+	printer      interfaces.Printer `gob:"-"`
+	MainConfig   *configModel.MainConfig
+	RedisConfig  *configModel.RedisConfig
+	HarborConfig *configModel.HarborConfig
+	MongoConfig  *configModel.MongoConfig
+	status       string `gob:"-"`
 }
 
-func NewConfigManager(printer interfaces.Printer) *ConfigManager {
-	return &ConfigManager{
-		printer: printer,
+func (configManager *ConfigManager) Init(moduleManager *module.Manager) {
+
+}
+
+func (configManager *ConfigManager) Disable(shutdown bool) {
+	if !shutdown {
+		if configManager.printer != nil {
+			configManager.printer.PrintColored("This module cannot be disabled!", configManager.printer.Service(), types.Red)
+		}
+		return
+	}
+	configManager.status = types.Stopping
+	// save data (services)
+	configManager.status = types.Disabled
+}
+
+func (configManager *ConfigManager) Reload() {
+	startTime := time.Now()
+	if configManager.printer != nil {
+		configManager.printer.Print("Reloading config module...", configManager.printer.Service())
+	}
+	configManager.LoadData()
+	if configManager.printer != nil {
+		millisecondsElapsed := time.Since(startTime).Milliseconds()
+		configManager.printer.Print("Reloaded config module in "+strconv.FormatInt(millisecondsElapsed, 10)+"ms.", configManager.printer.Service())
 	}
 }
 
-func (configManager *ConfigManager) GetMainConfig() interfaces.MainConfig {
-	return configManager.mainConfig
+func (configManager *ConfigManager) SaveData() error {
+	return util.SaveData(configManager.Type(), configManager)
 }
 
-func (configManager *ConfigManager) GetRedisConfig() interfaces.RedisConfig {
-	return configManager.redisConfig
-}
-
-func (configManager *ConfigManager) GetHarborConfig() interfaces.HarborConfig {
-	return configManager.harborConfig
-}
-
-func (configManager *ConfigManager) GetMongoConfig() interfaces.MongoConfig {
-	return configManager.mongoConfig
-}
-
-func (configManager *ConfigManager) Init() {
+func (configManager *ConfigManager) LoadData() {
 	configManager.loadFolderStructure()
 	configManager.loadMainConfigFile()
 	configManager.loadRedisConfigFile()
@@ -49,10 +64,39 @@ func (configManager *ConfigManager) Init() {
 	configManager.loadMongoConfigFile()
 }
 
+func (configManager *ConfigManager) SetStatus(newStatus string) {
+	configManager.status = newStatus
+}
+
+func (configManager *ConfigManager) Status() string {
+	return configManager.status
+}
+
+func (configManager *ConfigManager) Type() string {
+	return types.Config
+}
+
+func NewConfigManager() *ConfigManager {
+	return &ConfigManager{}
+}
+
+func (configManager *ConfigManager) GetMainConfig() interfaces.MainConfig {
+	return configManager.MainConfig
+}
+
+func (configManager *ConfigManager) GetRedisConfig() interfaces.RedisConfig {
+	return configManager.RedisConfig
+}
+
+func (configManager *ConfigManager) GetHarborConfig() interfaces.HarborConfig {
+	return configManager.HarborConfig
+}
+
+func (configManager *ConfigManager) GetMongoConfig() interfaces.MongoConfig {
+	return configManager.MongoConfig
+}
+
 func (configManager *ConfigManager) loadFolderStructure() {
-	configManager.loadFolder("config", "")
-	configManager.loadFolder("data", "")
-	configManager.loadFolder("services", "")
 	configManager.loadFolder("templates", "services")
 	configManager.loadFolder("instances", "services")
 	configManager.loadFolder("config", "services")
@@ -79,7 +123,7 @@ func (configManager *ConfigManager) loadMainConfigFile() {
 
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
-		configManager.mainConfig = configModel.CreateDefaultMainConfig(configManager.printer)
+		configManager.MainConfig = configModel.CreateDefaultMainConfig(configManager.printer)
 		return
 	}
 
@@ -89,7 +133,7 @@ func (configManager *ConfigManager) loadMainConfigFile() {
 		return
 	}
 
-	err = json.Unmarshal(fileData, &configManager.mainConfig)
+	err = json.Unmarshal(fileData, &configManager.MainConfig)
 	if handler.HandleError(configManager.printer, "Error occured during loading config.", err, configManager.printer.Service(), true) {
 		return
 	}
@@ -101,7 +145,7 @@ func (configManager *ConfigManager) loadRedisConfigFile() {
 
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
-		configManager.redisConfig = configModel.CreateDefaultRedisConfig(configManager.printer)
+		configManager.RedisConfig = configModel.CreateDefaultRedisConfig(configManager.printer)
 		return
 	}
 
@@ -111,7 +155,7 @@ func (configManager *ConfigManager) loadRedisConfigFile() {
 		return
 	}
 
-	err = json.Unmarshal(fileData, &configManager.redisConfig)
+	err = json.Unmarshal(fileData, &configManager.RedisConfig)
 	if handler.HandleError(configManager.printer, "Error occured during loading Redis config.", err, configManager.printer.Service(), true) {
 		return
 	}
@@ -123,7 +167,7 @@ func (configManager *ConfigManager) loadHarborConfigFile() {
 
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
-		configManager.harborConfig = configModel.CreateDefaultHarborConfigFile(configManager.printer)
+		configManager.HarborConfig = configModel.CreateDefaultHarborConfigFile(configManager.printer)
 		return
 	}
 
@@ -133,7 +177,7 @@ func (configManager *ConfigManager) loadHarborConfigFile() {
 		return
 	}
 
-	err = json.Unmarshal(fileData, &configManager.harborConfig)
+	err = json.Unmarshal(fileData, &configManager.HarborConfig)
 	if handler.HandleError(configManager.printer, "Error occured during loading Harbor config.", err, configManager.printer.Service(), true) {
 		return
 	}
@@ -145,7 +189,7 @@ func (configManager *ConfigManager) loadMongoConfigFile() {
 
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
-		configManager.mongoConfig = configModel.CreateDefaultMongoConfig(configManager.printer)
+		configManager.MongoConfig = configModel.CreateDefaultMongoConfig(configManager.printer)
 		return
 	}
 
@@ -155,7 +199,7 @@ func (configManager *ConfigManager) loadMongoConfigFile() {
 		return
 	}
 
-	err = json.Unmarshal(fileData, &configManager.mongoConfig)
+	err = json.Unmarshal(fileData, &configManager.MongoConfig)
 	if handler.HandleError(configManager.printer, "Error occured during loading MongoDB config.", err, configManager.printer.Service(), true) {
 		return
 	}

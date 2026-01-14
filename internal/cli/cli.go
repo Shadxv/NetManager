@@ -14,7 +14,7 @@ import (
 )
 
 type Console struct {
-	CommandManager *manager.CommandManager
+	commandManager *manager.CommandManager
 	// Prevents app from closing befor it should (console is async)
 	mainWaitGroup     *sync.WaitGroup
 	service           interfaces.Service
@@ -47,11 +47,11 @@ func NewDefaultConsole(mainWaitGroup *sync.WaitGroup) *Console {
 }
 
 func (console *Console) Init() *Console {
-	// Adds 1 to wg counter to prevent console (and printer) from closing befor printer is done
+	// Adds 1 to wg counter to prevent console (and printer) from closing before printer is done
 	// Later decremented in Close()
 	console.printHandlerWG.Add(1)
-	console.CommandManager = manager.NewCommandManager(console)
-	console.CommandManager.Init()
+	console.commandManager = manager.NewCommandManager(console)
+	console.commandManager.Init()
 	return console
 }
 
@@ -151,6 +151,10 @@ func (console *Console) Service() interfaces.Service {
 	return console.service
 }
 
+func (console *Console) CommandManager() interfaces.CommandManager {
+	return console.commandManager
+}
+
 func (console *Console) handleInput() {
 	defer console.consoleWaitGroup.Done()
 	if err := keyboard.Open(); err != nil {
@@ -218,7 +222,7 @@ func (console *Console) executeCommand() {
 	console.cursorPos = 0
 	fmt.Println()
 	if command != "" {
-		go console.CommandManager.ExecuteCommand(command)
+		go console.commandManager.ExecuteCommand(command)
 	}
 	console.printPrompt()
 

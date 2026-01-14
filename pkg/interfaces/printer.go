@@ -9,4 +9,5 @@ type Printer interface {
 	Pause()
 	Resume()
 	Service() Service
+	CommandManager() CommandManager
 }

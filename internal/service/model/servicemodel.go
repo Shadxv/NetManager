@@ -4,8 +4,9 @@ import (
 	"NetManager/internal/kubernetes/model"
 	"NetManager/pkg/interfaces"
 	"NetManager/pkg/types"
-	corev1 "k8s.io/api/core/v1"
 	"slices"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 type Service struct {
@@ -15,10 +16,11 @@ type Service struct {
 	imageName         string
 	currentVersion    string
 	availableVersions []string
-	appConfig         *interface{}
-	podInstances      map[string]interfaces.PodInstance
-	netService        *corev1.Service
-	serviceData       *interface{}
+	// Config from k8s
+	appConfig    interface{}                       `gob:"-"`
+	podInstances map[string]interfaces.PodInstance `gob:"-"`
+	netService   *corev1.Service                   `gob:"-"`
+	serviceData  interface{}
 }
 
 func NewService(name string, serviceType string, status string, imageName string, currentVersion string, availableVersions []string, serviceData *interface{}) *Service {
@@ -87,11 +89,11 @@ func (service *Service) AddVersion(version string) {
 	service.availableVersions = append(service.availableVersions, version)
 }
 
-func (service *Service) AppConfig() *interface{} {
+func (service *Service) AppConfig() interface{} {
 	return service.appConfig
 }
 
-func (service *Service) SetAppConfig(config *interface{}) {
+func (service *Service) SetAppConfig(config interface{}) {
 	service.appConfig = config
 }
 
@@ -135,33 +137,33 @@ func (service *Service) RemoveNetService() {
 	service.netService = nil
 }
 
-func (service *Service) ServiceData() *interface{} {
+func (service *Service) ServiceData() interface{} {
 	return service.serviceData
 }
 
 func (service *Service) Build(printer interfaces.Printer, imageManager interfaces.ImageManager, serviceManager interfaces.ServiceManager) {
-	data := *service.serviceData
+	data := service.serviceData
 	data.(interfaces.Data).Build(service, printer, imageManager, serviceManager)
 }
 
 func (service *Service) Update(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
-	data := *service.serviceData
+	data := service.serviceData
 	data.(interfaces.Data).Update(service, printer, clusterManager)
 }
 
 func (service *Service) Stop(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
-	data := *service.serviceData
+	data := service.serviceData
 	data.(interfaces.Data).Stop(service, printer, clusterManager)
 	service.SetStatus(types.Stopped)
 }
 
 func (service *Service) Start(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
-	data := *service.serviceData
+	data := service.serviceData
 	data.(interfaces.Data).Start(service, printer, clusterManager)
 }
 
 func (service *Service) Deploy(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
-	data := *service.serviceData
+	data := service.serviceData
 	data.(interfaces.Data).Deploy(service, printer, clusterManager)
 	service.updatePodInstances(clusterManager)
 }

@@ -2,9 +2,11 @@ package manager
 
 import (
 	"NetManager/internal/cli/commands"
+	"NetManager/internal/module"
 	"NetManager/internal/service/model"
 	"NetManager/pkg/interfaces"
 	"NetManager/pkg/types"
+	"NetManager/pkg/util"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,36 +18,64 @@ import (
 )
 
 type ServiceManager struct {
-	printer       interfaces.Printer
-	configManager interfaces.ConfigManager
+	printer       interfaces.Printer       `gob:"-"`
+	configManager interfaces.ConfigManager `gob:"-"`
 	services      map[string]interfaces.ServiceModel
+	status        string `gob:"-"`
 }
 
-func NewServiceManager(printer interfaces.Printer, configManager interfaces.ConfigManager, services map[string]interfaces.ServiceModel) *ServiceManager {
-	return &ServiceManager{
-		printer:       printer,
-		configManager: configManager,
-		services:      services,
+func (manager *ServiceManager) Init(moduleManager *module.Manager) {
+	manager.status = types.Starting
+	printer, err := module.GetTypedModule[interfaces.Printer](moduleManager, types.Console)
+	if err == nil {
+		manager.status = types.Disabled
+		return
+	}
+	manager.printer = printer
+
+	// TODO change service command struct to have only modulemanager and printer
+	manager.printer.CommandManager().RegisterCommand(&commands.ServiceCommand{})
+	manager.status = types.Enabled
+}
+
+func (manager *ServiceManager) Disable(shutdown bool) {
+	if !shutdown {
+		if manager.printer != nil {
+			manager.printer.PrintColored("This module cannot be disabled!", manager.printer.Service(), types.Red)
+		}
+		return
+	}
+	manager.status = types.Stopping
+	// save data (services)
+	// stop watchers
+	// clear services
+	manager.status = types.Disabled
+}
+
+func (manager *ServiceManager) Reload() {
+	if manager.printer != nil {
+		manager.printer.PrintColored("This module cannot be reloaded!", manager.printer.Service(), types.Red)
 	}
 }
 
-func CreateNewServiceManager(printer interfaces.Printer, configManager interfaces.ConfigManager) *ServiceManager {
-	return &ServiceManager{
-		printer:       printer,
-		configManager: configManager,
-		services:      make(map[string]interfaces.ServiceModel),
-	}
+func (manager *ServiceManager) SaveData() error {
+	return util.SaveData(manager.Type(), manager)
 }
 
-func (manager *ServiceManager) Init(commandManager interfaces.CommandManager, imageManager interfaces.ImageManager, kubernetesClient interfaces.KubernetesClient) *ServiceManager {
-	commandManager.RegisterCommand(&commands.ServiceCommand{
-		Printer:          manager.printer,
-		ServiceManager:   manager,
-		ConfigManager:    manager.configManager,
-		ImageManager:     imageManager,
-		KubernetesClient: kubernetesClient,
-	})
-	return manager
+func (manager *ServiceManager) LoadData() {
+
+}
+
+func (manager *ServiceManager) SetStatus(newStatus string) {
+	manager.status = newStatus
+}
+
+func (manager *ServiceManager) Status() string {
+	return manager.status
+}
+
+func (manager *ServiceManager) Type() string {
+	return types.Services
 }
 
 func (manager *ServiceManager) AddNewService(name string, serviceType string, serviceData *interface{}) interfaces.ServiceModel {

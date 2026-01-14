@@ -1,14 +1,14 @@
 package types
 
 const (
-	Paper    = "PAPER"
-	Velocity = "VELOCITY"
-	Redis    = "REDIS"
-	Harbor   = "HARBOR"
-	MongoDB  = "MONGODB"
-)
-
-const (
-	Stopped = "STOPPED"
-	Running = "RUNNING"
+	Paper      = "PAPER"
+	Velocity   = "VELOCITY"
+	Redis      = "REDIS"
+	Harbor     = "HARBOR"
+	MongoDB    = "MONGODB"
+	Console    = "CONSOLE"
+	Config     = "CONFIG"
+	Images     = "IMAGES"
+	Kubernetes = "KUBERNETES"
+	Services   = "SERVICES"
 )

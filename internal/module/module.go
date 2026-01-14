@@ -1,21 +1,12 @@
 package module
 
-type Data struct {
-}
-
-type Object interface {
-	Init()
-	Disable()
+type Module interface {
+	Init(moduleManager *Manager)
+	Disable(shutdown bool)
 	Reload()
-	SaveData()
+	SaveData() error
 	LoadData()
+	SetStatus(newStatus string)
+	Status() string
+	Type() string
 }
-
-const (
-	Console    = "Console"
-	Config     = "Config"
-	Redis      = "Redis"
-	MongoDB    = "MongoDB"
-	Images     = "Images"
-	Kubernetes = "Kubernetes"
-)
