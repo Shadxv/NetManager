@@ -14,51 +14,51 @@ import (
 )
 
 type RedisData struct {
-	port            int
-	externalPort    int
-	password        string
-	maxMemory       string
-	maxMemoryPolicy string
-	internalRedisIp string
-	externalRedisIp string
+	PortField            int
+	ExternalPortField    int
+	PasswordField        string
+	MaxMemoryField       string
+	MaxMemoryPolicyField string
+	InternalRedisIpField string
+	ExternalRedisIpField string
 }
 
 func NewRedisData(port int, externalPort int, password string, maxMemory string, maxMemoryPolicy string) *RedisData {
 	return &RedisData{
-		port:            port,
-		externalPort:    externalPort,
-		password:        password,
-		maxMemory:       maxMemory,
-		maxMemoryPolicy: maxMemoryPolicy,
+		PortField:            port,
+		ExternalPortField:    externalPort,
+		PasswordField:        password,
+		MaxMemoryField:       maxMemory,
+		MaxMemoryPolicyField: maxMemoryPolicy,
 	}
 }
 
 func (data *RedisData) Port() int {
-	return data.port
+	return data.PortField
 }
 
 func (data *RedisData) ExternalPort() int {
-	return data.externalPort
+	return data.ExternalPortField
 }
 
 func (data *RedisData) Password() string {
-	return data.password
+	return data.PasswordField
 }
 
 func (data *RedisData) MaxMemory() string {
-	return data.maxMemory
+	return data.MaxMemoryField
 }
 
 func (data *RedisData) MaxMemoryPolicy() string {
-	return data.maxMemoryPolicy
+	return data.MaxMemoryPolicyField
 }
 
 func (data *RedisData) InternalRedisIp() string {
-	return data.internalRedisIp
+	return data.InternalRedisIpField
 }
 
 func (data *RedisData) ExternalRedisIp() string {
-	return data.externalRedisIp
+	return data.ExternalRedisIpField
 }
 
 func (data *RedisData) Build(serviceModel interfaces.ServiceModel, printer interfaces.Printer, imageManager interfaces.ImageManager, serviceManager interfaces.ServiceManager) {
@@ -111,7 +111,7 @@ func (data *RedisData) Deploy(serviceModel interfaces.ServiceModel, printer inte
 		return
 	}
 
-	if data.internalRedisIp = internalService.Spec.ClusterIP; data.internalRedisIp == "" {
+	if data.InternalRedisIpField = internalService.Spec.ClusterIP; data.InternalRedisIpField == "" {
 		printer.PrintColored("NetManager could not get Redis internal IP.", printer.Service(), types.Red)
 		return
 	}
@@ -124,26 +124,26 @@ func (data *RedisData) Deploy(serviceModel interfaces.ServiceModel, printer inte
 	for _, node := range nodes {
 		for _, addr := range node.Status.Addresses {
 			if addr.Type == corev1.NodeExternalIP {
-				data.externalRedisIp = addr.Address
+				data.ExternalRedisIpField = addr.Address
 				break
 			} else if addr.Type == corev1.NodeInternalIP {
-				data.externalRedisIp = addr.Address
+				data.ExternalRedisIpField = addr.Address
 				break
 			}
 		}
-		if data.externalRedisIp != "" {
+		if data.ExternalRedisIpField != "" {
 			break
 		}
 	}
 
-	if data.externalRedisIp == "" {
+	if data.ExternalRedisIpField == "" {
 		printer.PrintColored("Could not find any node IP address", printer.Service(), types.Red)
 		return
 	}
 
 	serviceModel.SetStatus(types.Running)
-	printer.Print("Internal address: "+data.internalRedisIp+":"+strconv.Itoa(data.port), printer.Service())
-	printer.Print("External address: "+data.externalRedisIp+":"+strconv.Itoa(data.externalPort), printer.Service())
+	printer.Print("Internal address: "+data.InternalRedisIpField+":"+strconv.Itoa(data.PortField), printer.Service())
+	printer.Print("External address: "+data.ExternalRedisIpField+":"+strconv.Itoa(data.ExternalPortField), printer.Service())
 	printer.Print("Redis service is running", printer.Service())
 }
 
@@ -175,7 +175,7 @@ func (data *RedisData) generateDeployment(serviceModel interfaces.ServiceModel) 
 							Image: serviceModel.ImageName() + ":" + serviceModel.CurrentVersion(),
 							Ports: []corev1.ContainerPort{
 								{
-									ContainerPort: int32(data.port),
+									ContainerPort: int32(data.PortField),
 								},
 							},
 							Command: []string{
@@ -223,9 +223,9 @@ func (data *RedisData) generateClusterIPService(serviceModel interfaces.ServiceM
 			},
 			Ports: []corev1.ServicePort{
 				{
-					Port: int32(data.port),
+					Port: int32(data.PortField),
 					TargetPort: intstr.IntOrString{
-						IntVal: int32(data.port),
+						IntVal: int32(data.PortField),
 					},
 					Protocol: corev1.ProtocolTCP,
 				},
@@ -249,11 +249,11 @@ func (data *RedisData) generateNodePortService(serviceModel interfaces.ServiceMo
 			},
 			Ports: []corev1.ServicePort{
 				{
-					Port: int32(data.port),
+					Port: int32(data.PortField),
 					TargetPort: intstr.IntOrString{
-						IntVal: int32(data.port),
+						IntVal: int32(data.PortField),
 					},
-					NodePort: int32(data.externalPort),
+					NodePort: int32(data.ExternalPortField),
 					Protocol: corev1.ProtocolTCP,
 				},
 			},
@@ -279,7 +279,7 @@ appendonly yes
 appendfsync everysec
 timeout 0
 tcp-keepalive 300
-maxclients 10000`, data.port),
+maxclients 10000`, data.PortField),
 		},
 	}
 }

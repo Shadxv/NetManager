@@ -13,7 +13,19 @@ type Manager struct {
 }
 
 func (manager *Manager) Init() {
+	for _, item := range manager.modules.Items() {
+		module := item.Value
+		module.SetStatus(types.Starting)
+		module.Init(manager)
+	}
+}
 
+func (manager *Manager) Disable() {
+	items := manager.modules.Items()
+	for i := len(items) - 1; i >= 0; i-- {
+		module := items[i].Value
+		module.Disable(true)
+	}
 }
 
 func (manager *Manager) AddModule(module Module) {
@@ -22,8 +34,6 @@ func (manager *Manager) AddModule(module Module) {
 	}
 
 	manager.modules.Set(module.Type(), module)
-	module.SetStatus(types.Starting)
-	module.Init(manager)
 }
 
 func (manager *Manager) RemoveModule(module Module, shutdown bool) {

@@ -2,20 +2,23 @@ package manager
 
 import (
 	"NetManager/internal/cli/commands"
+	"NetManager/internal/module"
 	"NetManager/pkg/interfaces"
 	"NetManager/pkg/types"
 	"strings"
 )
 
 type CommandManager struct {
-	printer  interfaces.Printer
-	commands map[string]interfaces.Command
+	printer       interfaces.Printer
+	commands      map[string]interfaces.Command
+	moduleManager *module.Manager
 }
 
-func NewCommandManager(printer interfaces.Printer) *CommandManager {
+func NewCommandManager(printer interfaces.Printer, moduleManager *module.Manager) *CommandManager {
 	return &CommandManager{
-		printer:  printer,
-		commands: make(map[string]interfaces.Command),
+		printer:       printer,
+		commands:      make(map[string]interfaces.Command),
+		moduleManager: moduleManager,
 	}
 }
 

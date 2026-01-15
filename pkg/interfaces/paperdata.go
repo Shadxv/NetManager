@@ -10,7 +10,7 @@ type PaperData interface {
 }
 
 func GetPaperData(service ServiceModel) PaperData {
-	data := *service.ServiceData()
+	data := service.ServiceData()
 	if data, ok := data.(PaperData); ok {
 		return data
 	}

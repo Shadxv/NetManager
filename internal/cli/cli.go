@@ -3,6 +3,7 @@ package cli
 import (
 	"NetManager/internal/cli/handler"
 	"NetManager/internal/cli/manager"
+	"NetManager/internal/module"
 	"NetManager/pkg/interfaces"
 	"NetManager/pkg/types"
 	"fmt"
@@ -31,6 +32,10 @@ type Console struct {
 	printHandlerWG sync.WaitGroup
 	inputBuffer    string
 	cursorPos      int
+
+	// Module fields
+	status        string
+	moduleManager *module.Manager
 }
 
 func NewDefaultConsole(mainWaitGroup *sync.WaitGroup) *Console {
@@ -43,16 +48,54 @@ func NewDefaultConsole(mainWaitGroup *sync.WaitGroup) *Console {
 		printChan:   make(chan string),
 		inputBuffer: "",
 		cursorPos:   0,
+		status:      types.Starting,
 	}
 }
 
-func (console *Console) Init() *Console {
+func (console *Console) Init(moduleManager *module.Manager) {
+	console.moduleManager = moduleManager
+
 	// Adds 1 to wg counter to prevent console (and printer) from closing before printer is done
 	// Later decremented in Close()
 	console.printHandlerWG.Add(1)
-	console.commandManager = manager.NewCommandManager(console)
+	console.commandManager = manager.NewCommandManager(console, moduleManager)
 	console.commandManager.Init()
-	return console
+
+	console.moduleManager.AddToWG()
+	console.SetStatus(types.Enabled)
+
+	// Run logic
+	console.consoleWaitGroup.Add(3)
+	go console.handleInput()
+	go console.printHandler()
+}
+
+func (console *Console) Disable(shutdown bool) {
+	console.Close()
+}
+
+func (console *Console) Reload() {}
+
+func (console *Console) SaveData() error {
+	return nil
+}
+
+func (console *Console) LoadData() {}
+
+func (console *Console) SetStatus(newStatus string) {
+	console.mutex.Lock()
+	defer console.mutex.Unlock()
+	console.status = newStatus
+}
+
+func (console *Console) Status() string {
+	console.mutex.RLock()
+	defer console.mutex.RUnlock()
+	return console.status
+}
+
+func (console *Console) Type() string {
+	return types.Console
 }
 
 func (console *Console) Run() {
@@ -119,7 +162,6 @@ func (console *Console) Resume() {
 	}
 
 	for _, msg := range console.pendingMessages {
-		console.printHandlerWG.Done()
 		if console.isClosing || !console.isRunning {
 			return
 		}
@@ -144,7 +186,7 @@ func (console *Console) Resume() {
 func (console *Console) CloseGracefully(message string) {
 	console.SetClosingStatus()
 	console.Print(message, console.Service())
-	console.Close()
+	console.moduleManager.Disable()
 }
 
 func (console *Console) Service() interfaces.Service {

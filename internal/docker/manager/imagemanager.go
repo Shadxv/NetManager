@@ -2,37 +2,87 @@ package manager
 
 import (
 	"NetManager/internal/docker"
+	"NetManager/internal/module"
 	"NetManager/pkg/interfaces"
 	"NetManager/pkg/types"
 	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"path"
+	"strconv"
+	"strings"
+
 	dockerTypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/pkg/archive"
-	"io"
-	"path"
-	"strconv"
-	"strings"
 )
 
 type ImageManager struct {
 	printer interfaces.Printer
 	client  *docker.Client
+
+	// Module fields
+	status        string
+	moduleManager *module.Manager
 }
 
-func NewImageManager(printer interfaces.Printer) *ImageManager {
+func NewImageManager() *ImageManager {
 	return &ImageManager{
-		printer: printer,
-		client:  docker.NewClient(printer),
+		status: types.Starting,
 	}
 }
 
-func (manager *ImageManager) Init() {
+func (manager *ImageManager) Init(moduleManager *module.Manager) {
+	manager.moduleManager = moduleManager
+
+	printer, err := module.GetTypedModule[interfaces.Printer](manager.moduleManager, types.Console)
+	if err != nil {
+		fmt.Printf("Critical error in ImageManager: %v\n", err)
+		manager.SetStatus(types.Disabled)
+		return
+	}
+	manager.printer = printer
+
+	manager.client = docker.NewClient(manager.printer)
 	manager.client.Init()
+
+	manager.SetStatus(types.Enabled)
+}
+
+func (manager *ImageManager) Disable(shutdown bool) {
+	manager.SetStatus(types.Stopping)
+	manager.client.Close()
+	manager.SetStatus(types.Disabled)
+}
+
+func (manager *ImageManager) Reload() {
+	manager.SetStatus(types.Stopping)
+	manager.client.Close()
+	manager.SetStatus(types.Starting)
+	manager.client.Init()
+	manager.SetStatus(types.Enabled)
+}
+
+func (manager *ImageManager) SaveData() error {
+	return nil
+}
+
+func (manager *ImageManager) LoadData() {}
+
+func (manager *ImageManager) SetStatus(newStatus string) {
+	manager.status = newStatus
+}
+
+func (manager *ImageManager) Status() string {
+	return manager.status
+}
+
+func (manager *ImageManager) Type() string {
+	return types.Images
 }
 
 func (manager *ImageManager) Client() interfaces.DockerClient {

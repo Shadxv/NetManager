@@ -8,7 +8,7 @@ type HarborData interface {
 }
 
 func GetHarborData(service ServiceModel) HarborData {
-	data := *service.ServiceData()
+	data := service.ServiceData()
 	if data, ok := data.(HarborData); ok {
 		return data
 	}

@@ -10,35 +10,35 @@ import (
 )
 
 type HarborData struct {
-	domain      string
-	projectName string
-	username    string
-	password    string
+	DomainField      string
+	ProjectNameField string
+	UsernameField    string
+	PasswordField    string
 }
 
 func NewHarborData(domain string, projectName string, username string, password string) *HarborData {
 	return &HarborData{
-		domain:      domain,
-		projectName: projectName,
-		username:    username,
-		password:    password,
+		DomainField:      domain,
+		ProjectNameField: projectName,
+		UsernameField:    username,
+		PasswordField:    password,
 	}
 }
 
 func (data *HarborData) Domain() string {
-	return data.domain
+	return data.DomainField
 }
 
 func (data *HarborData) ProjectName() string {
-	return data.projectName
+	return data.ProjectNameField
 }
 
 func (data *HarborData) Username() string {
-	return data.username
+	return data.UsernameField
 }
 
 func (data *HarborData) Password() string {
-	return data.password
+	return data.PasswordField
 }
 
 func (data *HarborData) Build(serviceModel interfaces.ServiceModel, printer interfaces.Printer, imageManager interfaces.ImageManager, serviceManager interfaces.ServiceManager) {
@@ -68,7 +68,7 @@ func (data *HarborData) Deploy(serviceModel interfaces.ServiceModel, printer int
 }
 
 func (data *HarborData) createCredentialsSecret() *corev1.Secret {
-	auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", data.username, data.password)))
+	auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", data.UsernameField, data.PasswordField)))
 	dockerConfigJson := fmt.Sprintf(`{
 		"auths": {
 			"%s": {
@@ -78,7 +78,7 @@ func (data *HarborData) createCredentialsSecret() *corev1.Secret {
 				"auth": "%s"
 			}
 		}
-	}`, data.domain, data.username, data.password, "netmanager@dreammc.pl", auth)
+	}`, data.DomainField, data.UsernameField, data.PasswordField, "netmanager@dreammc.pl", auth)
 
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{

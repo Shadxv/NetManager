@@ -2,7 +2,11 @@ package manager
 
 import (
 	"NetManager/internal/cli/commands"
+	harborModel "NetManager/internal/docker/model"
+	"NetManager/internal/kubernetes"
 	"NetManager/internal/module"
+	mongoModel "NetManager/internal/mongodb/model"
+	redisModel "NetManager/internal/redis/model"
 	"NetManager/internal/service/model"
 	"NetManager/pkg/interfaces"
 	"NetManager/pkg/types"
@@ -20,21 +24,58 @@ import (
 type ServiceManager struct {
 	printer       interfaces.Printer       `gob:"-"`
 	configManager interfaces.ConfigManager `gob:"-"`
-	services      map[string]interfaces.ServiceModel
+	Services      map[string]*model.Service
 	status        string `gob:"-"`
+}
+
+func NewServiceManager() *ServiceManager {
+	return &ServiceManager{
+		Services: make(map[string]*model.Service),
+		status:   types.Stopped,
+	}
 }
 
 func (manager *ServiceManager) Init(moduleManager *module.Manager) {
 	manager.status = types.Starting
 	printer, err := module.GetTypedModule[interfaces.Printer](moduleManager, types.Console)
-	if err == nil {
+	if err != nil {
 		manager.status = types.Disabled
 		return
 	}
 	manager.printer = printer
 
-	// TODO change service command struct to have only modulemanager and printer
-	manager.printer.CommandManager().RegisterCommand(&commands.ServiceCommand{})
+	configManager, err := module.GetTypedModule[interfaces.ConfigManager](moduleManager, types.Config)
+	if err != nil {
+		manager.printer.PrintColored("Config module not found!", manager.printer.Service(), types.Red)
+		manager.status = types.Disabled
+		return
+	}
+	manager.configManager = configManager
+
+	k8sClient, err := module.GetTypedModule[*kubernetes.Client](moduleManager, types.Kubernetes)
+	var clusterManager interfaces.ClusterManager
+	if err != nil {
+		manager.printer.PrintColored("Kubernetes module not found or not enabled!", manager.printer.Service(), types.Red)
+	} else {
+		clusterManager = k8sClient.ClusterManager()
+	}
+
+	if !manager.Exists("harbor") && clusterManager != nil {
+		harborModel.CreateHarborService(manager.printer, manager.configManager.GetHarborConfig(), manager, clusterManager)
+	}
+
+	if !manager.Exists("redis") && clusterManager != nil {
+		redisModel.CreateNewRedisService(manager.printer, manager.configManager.GetRedisConfig(), manager, clusterManager)
+	}
+
+	if !manager.Exists("mongodb") {
+		mongoModel.CreateNewMongoService(manager.configManager.GetMongoConfig(), manager)
+	}
+
+	manager.printer.CommandManager().RegisterCommand(&commands.ServiceCommand{
+		Printer:       manager.printer,
+		ModuleManager: moduleManager,
+	})
 	manager.status = types.Enabled
 }
 
@@ -46,9 +87,13 @@ func (manager *ServiceManager) Disable(shutdown bool) {
 		return
 	}
 	manager.status = types.Stopping
-	// save data (services)
+
+	err := manager.SaveData()
+	if err != nil {
+		manager.printer.PrintColored(err.Error(), manager.printer.Service(), types.Red)
+	}
 	// stop watchers
-	// clear services
+	// clear Services
 	manager.status = types.Disabled
 }
 
@@ -63,7 +108,9 @@ func (manager *ServiceManager) SaveData() error {
 }
 
 func (manager *ServiceManager) LoadData() {
-
+	if m, err := util.LoadData[ServiceManager](types.Services); err == nil {
+		manager.Services = m.Services
+	}
 }
 
 func (manager *ServiceManager) SetStatus(newStatus string) {
@@ -78,9 +125,9 @@ func (manager *ServiceManager) Type() string {
 	return types.Services
 }
 
-func (manager *ServiceManager) AddNewService(name string, serviceType string, serviceData *interface{}) interfaces.ServiceModel {
+func (manager *ServiceManager) AddNewService(name string, serviceType string, serviceData interface{}) interfaces.ServiceModel {
 	serviceModel := model.CreateNewService(name, serviceType, serviceData)
-	manager.services[name] = serviceModel
+	manager.Services[name] = serviceModel
 	go manager.createMinecraftServiceFileStructure(serviceModel)
 	return serviceModel
 }
@@ -93,33 +140,33 @@ func (manager *ServiceManager) AddService(name string, serviceType string, statu
 		image,
 		version,
 		make([]string, 0),
-		&serviceData,
+		serviceData,
 	)
-	manager.services[name] = serviceModel
+	manager.Services[name] = serviceModel
 	go manager.createMinecraftServiceFileStructure(serviceModel)
 	return serviceModel
 }
 
 func (manager *ServiceManager) DeleteService(name string) interfaces.ServiceModel {
-	serviceModel := manager.services[name]
+	serviceModel := manager.Services[name]
 	if serviceModel == nil {
 		return nil
 	}
-	delete(manager.services, name)
+	delete(manager.Services, name)
 	return serviceModel
 }
 
 func (manager *ServiceManager) Exists(name string) bool {
-	return manager.services[name] != nil
+	return manager.Services[name] != nil
 }
 
 func (manager *ServiceManager) GetService(name string) interfaces.ServiceModel {
-	return manager.services[name]
+	return manager.Services[name]
 }
 
-func (manager *ServiceManager) Services() []interfaces.ServiceModel {
-	services := make([]interfaces.ServiceModel, 0, len(manager.services))
-	for _, serviceModel := range manager.services {
+func (manager *ServiceManager) GetServices() []interfaces.ServiceModel {
+	services := make([]interfaces.ServiceModel, 0, len(manager.Services))
+	for _, serviceModel := range manager.Services {
 		services = append(services, serviceModel)
 	}
 	return services

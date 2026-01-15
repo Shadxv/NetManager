@@ -11,7 +11,7 @@ type RedisData interface {
 }
 
 func GetRedisData(service ServiceModel) RedisData {
-	data := *service.ServiceData()
+	data := service.ServiceData()
 	if data, ok := data.(RedisData); ok {
 		return data
 	}

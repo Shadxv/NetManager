@@ -12,46 +12,46 @@ import (
 )
 
 type PaperData struct {
-	groupName   string
-	version     string
-	build       int
-	minReplicas int
-	mongodbURI  string
-	redisURI    string
+	GroupNameField   string
+	VersionField     string
+	BuildField       int
+	MinReplicasField int
+	MongodbURIField  string
+	RedisURIField    string
 }
 
 func NewPaperData(groupName string, version string, build int, minReplicas int, mongodbURI string, redisURI string) *PaperData {
 	return &PaperData{
-		groupName:   groupName,
-		version:     version,
-		build:       build,
-		minReplicas: minReplicas,
-		mongodbURI:  mongodbURI,
-		redisURI:    redisURI,
+		GroupNameField:   groupName,
+		VersionField:     version,
+		BuildField:       build,
+		MinReplicasField: minReplicas,
+		MongodbURIField:  mongodbURI,
+		RedisURIField:    redisURI,
 	}
 }
 func (data *PaperData) GroupName() string {
-	return data.groupName
+	return data.GroupNameField
 }
 
 func (data *PaperData) Version() string {
-	return data.version
+	return data.VersionField
 }
 
 func (data *PaperData) BuildNumber() int {
-	return data.build
+	return data.BuildField
 }
 
 func (data *PaperData) MinReplicas() int {
-	return data.minReplicas
+	return data.MinReplicasField
 }
 
 func (data *PaperData) MongoDBURI() string {
-	return data.mongodbURI
+	return data.MongodbURIField
 }
 
 func (data *PaperData) RedisURI() string {
-	return data.redisURI
+	return data.RedisURIField
 }
 
 func (data *PaperData) Build(serviceModel interfaces.ServiceModel, printer interfaces.Printer, imageManager interfaces.ImageManager, serviceManager interfaces.ServiceManager) {
@@ -103,7 +103,7 @@ func (data *PaperData) generateStatefulSet(serviceModel interfaces.ServiceModel)
 		},
 		Spec: appsv1.StatefulSetSpec{
 			ServiceName: serviceModel.Name() + "-service",
-			Replicas:    util.IntToPtr(data.minReplicas),
+			Replicas:    util.IntToPtr(data.MinReplicasField),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": serviceModel.Name(),
@@ -129,15 +129,15 @@ func (data *PaperData) generateStatefulSet(serviceModel interfaces.ServiceModel)
 							Env: []corev1.EnvVar{
 								{
 									Name:  "MONGODB_URI",
-									Value: data.mongodbURI,
+									Value: data.MongodbURIField,
 								},
 								{
 									Name:  "REDIS_URI",
-									Value: data.redisURI,
+									Value: data.RedisURIField,
 								},
 								{
 									Name:  "GROUP_NAME",
-									Value: data.groupName,
+									Value: data.GroupNameField,
 								},
 								{
 									Name:  "SERVICE_NAME",

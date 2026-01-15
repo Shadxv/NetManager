@@ -8,7 +8,7 @@ type MongoData interface {
 }
 
 func GetMongoData(service ServiceModel) MongoData {
-	data := *service.ServiceData()
+	data := service.ServiceData()
 	if data, ok := data.(MongoData); ok {
 		return data
 	}

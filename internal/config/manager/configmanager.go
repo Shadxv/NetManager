@@ -25,7 +25,15 @@ type ConfigManager struct {
 }
 
 func (configManager *ConfigManager) Init(moduleManager *module.Manager) {
-
+	configManager.status = types.Starting
+	printer, err := module.GetTypedModule[interfaces.Printer](moduleManager, types.Console)
+	if err != nil {
+		configManager.status = types.Disabled
+		return
+	}
+	configManager.printer = printer
+	configManager.LoadData()
+	configManager.status = types.Enabled
 }
 
 func (configManager *ConfigManager) Disable(shutdown bool) {

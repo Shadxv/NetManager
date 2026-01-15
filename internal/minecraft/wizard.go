@@ -78,12 +78,12 @@ func (wizard *ServiceWizard) runConfiguration() {
 	case Canceled:
 		fmt.Println("Configuration canceled. Closing wizard")
 	case Finished:
-		wizard.finalize(&serviceData)
+		wizard.finalize(serviceData)
 	}
 
 }
 
-func (wizard *ServiceWizard) finalize(serviceData *interface{}) {
+func (wizard *ServiceWizard) finalize(serviceData interface{}) {
 	wizard.serviceManager.AddNewService(wizard.serviceName, wizard.serviceType, serviceData)
 }
 
@@ -107,7 +107,7 @@ func (wizard *ServiceWizard) readServiceType() bool {
 	return true
 }
 
-func (wizard *ServiceWizard) paperConfiguration() (int, interfaces.PaperData) {
+func (wizard *ServiceWizard) paperConfiguration() (int, *minecraftModel.PaperData) {
 	fmt.Println("Fetching available versions... Please wait")
 	if !fetchVersions("https://api.papermc.io/v2/projects/paper/", &wizard.fetchedVersions) {
 		return Error, nil
@@ -137,7 +137,7 @@ func (wizard *ServiceWizard) paperConfiguration() (int, interfaces.PaperData) {
 	return Finished, minecraftModel.NewPaperData(wizard.groupName, version, build, minReplicas, mongoURI, redisURI)
 }
 
-func (wizard *ServiceWizard) velocityConfiguration() (int, interfaces.VelocityData) {
+func (wizard *ServiceWizard) velocityConfiguration() (int, *minecraftModel.VelocityData) {
 	fmt.Println("Fetching available versions... Please wait")
 	if !fetchVersions("https://api.papermc.io/v2/projects/velocity/", &wizard.fetchedVersions) {
 		return Error, nil

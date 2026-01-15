@@ -1,7 +1,9 @@
 package interfaces
 
+import "NetManager/internal/module"
+
 type ConfigManager interface {
-	Init()
+	Init(moduleManager *module.Manager)
 	GetMainConfig() MainConfig
 	GetRedisConfig() RedisConfig
 	GetHarborConfig() HarborConfig
