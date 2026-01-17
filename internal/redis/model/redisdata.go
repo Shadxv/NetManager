@@ -5,60 +5,61 @@ import (
 	"NetManager/pkg/types"
 	"NetManager/pkg/util"
 	"fmt"
+	"strconv"
+	"time"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"strconv"
-	"time"
 )
 
 type RedisData struct {
-	port            int
-	externalPort    int
-	password        string
-	maxMemory       string
-	maxMemoryPolicy string
-	internalRedisIp string
-	externalRedisIp string
+	PortField            int
+	ExternalPortField    int
+	PasswordField        string
+	MaxMemoryField       string
+	MaxMemoryPolicyField string
+	InternalRedisIpField string
+	ExternalRedisIpField string
 }
 
 func NewRedisData(port int, externalPort int, password string, maxMemory string, maxMemoryPolicy string) *RedisData {
 	return &RedisData{
-		port:            port,
-		externalPort:    externalPort,
-		password:        password,
-		maxMemory:       maxMemory,
-		maxMemoryPolicy: maxMemoryPolicy,
+		PortField:            port,
+		ExternalPortField:    externalPort,
+		PasswordField:        password,
+		MaxMemoryField:       maxMemory,
+		MaxMemoryPolicyField: maxMemoryPolicy,
 	}
 }
 
 func (data *RedisData) Port() int {
-	return data.port
+	return data.PortField
 }
 
 func (data *RedisData) ExternalPort() int {
-	return data.externalPort
+	return data.ExternalPortField
 }
 
 func (data *RedisData) Password() string {
-	return data.password
+	return data.PasswordField
 }
 
 func (data *RedisData) MaxMemory() string {
-	return data.maxMemory
+	return data.MaxMemoryField
 }
 
 func (data *RedisData) MaxMemoryPolicy() string {
-	return data.maxMemoryPolicy
+	return data.MaxMemoryPolicyField
 }
 
 func (data *RedisData) InternalRedisIp() string {
-	return data.internalRedisIp
+	return data.InternalRedisIpField
 }
 
 func (data *RedisData) ExternalRedisIp() string {
-	return data.externalRedisIp
+	return data.ExternalRedisIpField
 }
 
 func (data *RedisData) Build(serviceModel interfaces.ServiceModel, printer interfaces.Printer, imageManager interfaces.ImageManager, serviceManager interfaces.ServiceManager) {
@@ -71,10 +72,10 @@ func (data *RedisData) Update(serviceModel interfaces.ServiceModel, printer inte
 
 func (data *RedisData) Stop(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
 	printer.Print("Stopping Redis service...", printer.Service())
-	clusterManager.DeleteDeployment(serviceModel.Name())
-	clusterManager.DeleteConfigMap(serviceModel.Name() + "-config")
-	clusterManager.DeleteService(serviceModel.Name() + "-internal")
-	clusterManager.DeleteService(serviceModel.Name() + "-external")
+	clusterManager.DeleteDeployment(serviceModel.Name(), serviceModel.Namespace())
+	clusterManager.DeleteConfigMap(serviceModel.Name()+"-config", serviceModel.Namespace())
+	clusterManager.DeleteService(serviceModel.Name()+"-internal", serviceModel.Namespace())
+	clusterManager.DeleteService(serviceModel.Name()+"-external", serviceModel.Namespace())
 	printer.Print("Redis service has been stopped", printer.Service())
 }
 
@@ -84,24 +85,24 @@ func (data *RedisData) Start(serviceModel interfaces.ServiceModel, printer inter
 
 func (data *RedisData) Deploy(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
 	printer.Print("Checking Redis services statuses...", printer.Service())
-	_, err := clusterManager.GetConfigMapOrErr(serviceModel.Name() + "-config")
+	_, err := clusterManager.GetConfigMapOrErr(serviceModel.Name()+"-config", serviceModel.Namespace())
 	if err != nil {
-		clusterManager.CreateConfigMap(data.generateConfigMap(serviceModel))
+		clusterManager.CreateConfigMap(data.generateConfigMap(serviceModel), serviceModel.Namespace())
 	}
 
-	_, err = clusterManager.GetDeploymentOrErr(serviceModel.Name())
+	_, err = clusterManager.GetDeploymentOrErr(serviceModel.Name(), serviceModel.Namespace())
 	if err != nil {
-		clusterManager.CreateDeployment(data.generateDeployment(serviceModel))
+		clusterManager.CreateDeployment(data.generateDeployment(serviceModel), serviceModel.Namespace())
 	}
 
-	_, err = clusterManager.GetServiceOrErr(serviceModel.Name() + "-internal")
+	_, err = clusterManager.GetServiceOrErr(serviceModel.Name()+"-internal", serviceModel.Namespace())
 	if err != nil {
-		clusterManager.CreateService(data.generateClusterIPService(serviceModel))
+		clusterManager.CreateService(data.generateClusterIPService(serviceModel), serviceModel.Namespace())
 	}
 
-	_, err = clusterManager.GetServiceOrErr(serviceModel.Name() + "-external")
+	_, err = clusterManager.GetServiceOrErr(serviceModel.Name()+"-external", serviceModel.Namespace())
 	if err != nil {
-		clusterManager.CreateService(data.generateNodePortService(serviceModel))
+		clusterManager.CreateService(data.generateNodePortService(serviceModel), serviceModel.Namespace())
 	}
 
 	var internalService *corev1.Service
@@ -111,7 +112,7 @@ func (data *RedisData) Deploy(serviceModel interfaces.ServiceModel, printer inte
 		return
 	}
 
-	if data.internalRedisIp = internalService.Spec.ClusterIP; data.internalRedisIp == "" {
+	if data.InternalRedisIpField = internalService.Spec.ClusterIP; data.InternalRedisIpField == "" {
 		printer.PrintColored("NetManager could not get Redis internal IP.", printer.Service(), types.Red)
 		return
 	}
@@ -124,26 +125,26 @@ func (data *RedisData) Deploy(serviceModel interfaces.ServiceModel, printer inte
 	for _, node := range nodes {
 		for _, addr := range node.Status.Addresses {
 			if addr.Type == corev1.NodeExternalIP {
-				data.externalRedisIp = addr.Address
+				data.ExternalRedisIpField = addr.Address
 				break
 			} else if addr.Type == corev1.NodeInternalIP {
-				data.externalRedisIp = addr.Address
+				data.ExternalRedisIpField = addr.Address
 				break
 			}
 		}
-		if data.externalRedisIp != "" {
+		if data.ExternalRedisIpField != "" {
 			break
 		}
 	}
 
-	if data.externalRedisIp == "" {
+	if data.ExternalRedisIpField == "" {
 		printer.PrintColored("Could not find any node IP address", printer.Service(), types.Red)
 		return
 	}
 
 	serviceModel.SetStatus(types.Running)
-	printer.Print("Internal address: "+data.internalRedisIp+":"+strconv.Itoa(data.port), printer.Service())
-	printer.Print("External address: "+data.externalRedisIp+":"+strconv.Itoa(data.externalPort), printer.Service())
+	printer.Print("Internal address: "+data.InternalRedisIpField+":"+strconv.Itoa(data.PortField), printer.Service())
+	printer.Print("External address: "+data.ExternalRedisIpField+":"+strconv.Itoa(data.ExternalPortField), printer.Service())
 	printer.Print("Redis service is running", printer.Service())
 }
 
@@ -175,7 +176,7 @@ func (data *RedisData) generateDeployment(serviceModel interfaces.ServiceModel) 
 							Image: serviceModel.ImageName() + ":" + serviceModel.CurrentVersion(),
 							Ports: []corev1.ContainerPort{
 								{
-									ContainerPort: int32(data.port),
+									ContainerPort: int32(data.PortField),
 								},
 							},
 							Command: []string{
@@ -223,9 +224,9 @@ func (data *RedisData) generateClusterIPService(serviceModel interfaces.ServiceM
 			},
 			Ports: []corev1.ServicePort{
 				{
-					Port: int32(data.port),
+					Port: int32(data.PortField),
 					TargetPort: intstr.IntOrString{
-						IntVal: int32(data.port),
+						IntVal: int32(data.PortField),
 					},
 					Protocol: corev1.ProtocolTCP,
 				},
@@ -249,11 +250,11 @@ func (data *RedisData) generateNodePortService(serviceModel interfaces.ServiceMo
 			},
 			Ports: []corev1.ServicePort{
 				{
-					Port: int32(data.port),
+					Port: int32(data.PortField),
 					TargetPort: intstr.IntOrString{
-						IntVal: int32(data.port),
+						IntVal: int32(data.PortField),
 					},
-					NodePort: int32(data.externalPort),
+					NodePort: int32(data.ExternalPortField),
 					Protocol: corev1.ProtocolTCP,
 				},
 			},
@@ -279,7 +280,7 @@ appendonly yes
 appendfsync everysec
 timeout 0
 tcp-keepalive 300
-maxclients 10000`, data.port),
+maxclients 10000`, data.PortField),
 		},
 	}
 }
@@ -294,17 +295,17 @@ func (data *RedisData) waitForServicesReady(serviceModel interfaces.ServiceModel
 		case <-timeout:
 			return nil, nil, fmt.Errorf("timeout waiting for Redis services to be ready")
 		case <-ticker.C:
-			internalService, internalReady, err := data.isServiceReady(serviceModel.Name()+"-internal", clusterManager)
+			internalService, internalReady, err := data.isServiceReady(serviceModel.Name()+"-internal", serviceModel, clusterManager)
 			if err != nil {
 				return nil, nil, fmt.Errorf("error checking internal service: %w", err)
 			}
 
-			externalService, externalReady, err := data.isServiceReady(serviceModel.Name()+"-external", clusterManager)
+			externalService, externalReady, err := data.isServiceReady(serviceModel.Name()+"-external", serviceModel, clusterManager)
 			if err != nil {
 				return nil, nil, fmt.Errorf("error checking external service: %w", err)
 			}
 
-			deploymentReady, err := data.isDeploymentReady(serviceModel.Name(), clusterManager)
+			deploymentReady, err := data.isDeploymentReady(serviceModel.Name(), serviceModel, clusterManager)
 			if err != nil {
 				return nil, nil, fmt.Errorf("error checking deployment: %w", err)
 			}
@@ -316,8 +317,8 @@ func (data *RedisData) waitForServicesReady(serviceModel interfaces.ServiceModel
 	}
 }
 
-func (data *RedisData) isServiceReady(name string, clusterManager interfaces.ClusterManager) (*corev1.Service, bool, error) {
-	service, err := clusterManager.GetServiceOrErr(name)
+func (data *RedisData) isServiceReady(name string, serviceModel interfaces.ServiceModel, clusterManager interfaces.ClusterManager) (*corev1.Service, bool, error) {
+	service, err := clusterManager.GetServiceOrErr(name, serviceModel.Namespace())
 	if err != nil {
 		return nil, false, err
 	}
@@ -337,8 +338,8 @@ func (data *RedisData) isServiceReady(name string, clusterManager interfaces.Clu
 	return service, true, nil
 }
 
-func (data *RedisData) isDeploymentReady(name string, clusterManager interfaces.ClusterManager) (bool, error) {
-	deployment, err := clusterManager.GetDeploymentOrErr(name)
+func (data *RedisData) isDeploymentReady(name string, serviceModel interfaces.ServiceModel, clusterManager interfaces.ClusterManager) (bool, error) {
+	deployment, err := clusterManager.GetDeploymentOrErr(name, serviceModel.Namespace())
 	if err != nil {
 		return false, err
 	}
@@ -347,11 +348,11 @@ func (data *RedisData) isDeploymentReady(name string, clusterManager interfaces.
 		return false, nil
 	}
 
-	return data.arePodsReady(name, clusterManager)
+	return data.arePodsReady(name, serviceModel, clusterManager)
 }
 
-func (data *RedisData) arePodsReady(name string, clusterManager interfaces.ClusterManager) (bool, error) {
-	pods, err := clusterManager.GetPodsOrErr("app=" + name)
+func (data *RedisData) arePodsReady(name string, serviceModel interfaces.ServiceModel, clusterManager interfaces.ClusterManager) (bool, error) {
+	pods, err := clusterManager.GetPodsOrErr("app="+name, serviceModel.Namespace())
 	if err != nil {
 		return false, err
 	}

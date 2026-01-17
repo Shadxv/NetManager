@@ -1,83 +1,84 @@
 package main
 
 import (
+	"NetManager/api"
 	"NetManager/internal/cli"
-	cmdManager "NetManager/internal/config/manager"
+	configManager "NetManager/internal/config/manager"
 	dockerManager "NetManager/internal/docker/manager"
 	harborModel "NetManager/internal/docker/model"
 	"NetManager/internal/kubernetes"
-	mongodbModel "NetManager/internal/mongodb/model"
+	dataModel "NetManager/internal/minecraft/model"
+	"NetManager/internal/module"
+	"NetManager/internal/module/logger"
+	mongoModel "NetManager/internal/mongodb/model"
 	"NetManager/internal/redis"
 	redisModel "NetManager/internal/redis/model"
 	serviceManager "NetManager/internal/service/manager"
+	serviceModel "NetManager/internal/service/model"
+	"NetManager/pkg/types"
+	"NetManager/pkg/util"
+	"encoding/gob"
+	"fmt"
 	"sync"
 )
 
-// TODO: Later add helm client to auto deploy charts like harbor and longhorn
-
-var Console *cli.Console
-var KubernetesClient *kubernetes.Client
-var ConfigManager *cmdManager.ConfigManager
-var ServiceManager *serviceManager.ServiceManager
-var ImageManager *dockerManager.ImageManager
-var RedisClient *redis.Client
-
 func main() {
-	var wg sync.WaitGroup
+	var mainWaitGroup sync.WaitGroup
 
-	Console = cli.NewDefaultConsole(&wg)
-	Console.Init()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		Console.Run()
-	}()
-
-	ConfigManager = cmdManager.NewConfigManager(Console)
-	ConfigManager.Init()
-
-	ImageManager = dockerManager.NewImageManager(Console)
-	ImageManager.Init()
-	defer ImageManager.Client().Close()
-
-	KubernetesClient = kubernetes.NewClient(Console)
-	KubernetesClient.Connect()
-	KubernetesClient.Init(ConfigManager)
-	if !KubernetesClient.IsLoaded() {
-		Console.CloseGracefully("App is shutting down...")
+	err := util.CreateBaseDirStructure()
+	if err != nil {
+		fmt.Println("Fatal Error: " + err.Error())
 		return
 	}
 
-	if &(Console.CommandManager) == nil {
-		Console.CloseGracefully("App is shutting down...")
-		return
+	InitGob()
+	log := logger.GetInstance()
+	log.Init()
+
+	moduleManager := module.NewModuleManager(&mainWaitGroup)
+	defer moduleManager.Disable()
+
+	var consoleModule = cli.NewDefaultConsole(&mainWaitGroup)
+	moduleManager.AddModule(consoleModule)
+
+	var configModule *configManager.ConfigManager
+	if m, err := util.LoadData[configManager.ConfigManager](types.Config); err == nil {
+		configModule = &m
+	} else {
+		configModule = configManager.NewConfigManager()
 	}
-	ServiceManager = serviceManager.CreateNewServiceManager(Console, ConfigManager)
-	ServiceManager.Init(Console.CommandManager, ImageManager, KubernetesClient)
+	moduleManager.AddModule(configModule)
 
-	harborModel.CreateHarborService(
-		Console,
-		ConfigManager.GetHarborConfig(),
-		ServiceManager,
-		KubernetesClient.ClusterManager(),
-	)
+	var imagesModule = dockerManager.NewImageManager()
+	moduleManager.AddModule(imagesModule)
 
-	redisModel.CreateNewRedisService(
-		Console,
-		ConfigManager.GetRedisConfig(),
-		ServiceManager,
-		KubernetesClient.ClusterManager(),
-	)
+	var clusterModule = kubernetes.NewClient()
+	moduleManager.AddModule(clusterModule)
 
-	mongodbModel.CreateNewMongoService(
-		ConfigManager.GetMongoConfig(),
-		ServiceManager,
-	)
+	var serviceModule *serviceManager.ServiceManager
+	if m, err := util.LoadData[serviceManager.ServiceManager](types.Services); err == nil {
+		serviceModule = &m
+	} else {
+		serviceModule = serviceManager.NewServiceManager()
+	}
+	moduleManager.AddModule(serviceModule)
 
-	RedisClient = redis.NewRedisClient(Console, KubernetesClient.ClusterManager())
-	RedisClient.Init(ServiceManager.GetService("redis"))
-	defer RedisClient.Close()
+	var redisModule = redis.NewRedisClient()
+	moduleManager.AddModule(redisModule)
 
-	wg.Wait()
+	var gatewayServer = api.NewServer(&mainWaitGroup)
+	moduleManager.AddModule(gatewayServer)
+
+	moduleManager.Init()
+
+	mainWaitGroup.Wait()
+}
+
+func InitGob() {
+	gob.Register(&dataModel.PaperData{})
+	gob.Register(&dataModel.VelocityData{})
+	gob.Register(&serviceModel.Service{})
+	gob.Register(&harborModel.HarborData{})
+	gob.Register(&redisModel.RedisData{})
+	gob.Register(&mongoModel.MongoData{})
 }

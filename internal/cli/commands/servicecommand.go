@@ -3,15 +3,15 @@ package commands
 import (
 	"NetManager/internal/cli/commands/servicesub"
 	"NetManager/internal/cli/handler"
+	"NetManager/internal/kubernetes"
+	"NetManager/internal/module"
 	"NetManager/pkg/interfaces"
+	"NetManager/pkg/types"
 )
 
 type ServiceCommand struct {
-	Printer          interfaces.Printer
-	ServiceManager   interfaces.ServiceManager
-	ConfigManager    interfaces.ConfigManager
-	ImageManager     interfaces.ImageManager
-	KubernetesClient interfaces.KubernetesClient
+	Printer       interfaces.Printer
+	ModuleManager *module.Manager
 }
 
 func (cmd *ServiceCommand) Execute(args []string) {
@@ -27,38 +27,62 @@ func (cmd *ServiceCommand) Description() string {
 }
 
 func (cmd *ServiceCommand) Subcommands() map[string]interfaces.Command {
+	serviceManager, err := module.GetTypedModule[interfaces.ServiceManager](cmd.ModuleManager, types.Services)
+	if err != nil {
+		cmd.Printer.PrintColored("ServiceManager module not found or not enabled!", cmd.Printer.Service(), types.Red)
+		return nil
+	}
+
+	configManager, err := module.GetTypedModule[interfaces.ConfigManager](cmd.ModuleManager, types.Config)
+	if err != nil {
+		cmd.Printer.PrintColored("ConfigManager module not found or not enabled!", cmd.Printer.Service(), types.Red)
+		return nil
+	}
+
+	imageManager, err := module.GetTypedModule[interfaces.ImageManager](cmd.ModuleManager, types.Images)
+	if err != nil {
+		cmd.Printer.PrintColored("ImageManager module not found or not enabled!", cmd.Printer.Service(), types.Red)
+		return nil
+	}
+
+	kubernetesClient, err := module.GetTypedModule[*kubernetes.Client](cmd.ModuleManager, types.Kubernetes)
+	if err != nil {
+		cmd.Printer.PrintColored("KubernetesClient module not found or not enabled!", cmd.Printer.Service(), types.Red)
+		return nil
+	}
+
 	createSubcommand := servicesub.CreateSubcommand{
 		Printer:        cmd.Printer,
-		ConfigManager:  cmd.ConfigManager,
-		ServiceManager: cmd.ServiceManager,
+		ConfigManager:  configManager,
+		ServiceManager: serviceManager,
 	}
 
 	listSubcommand := servicesub.ListSubcommand{
 		Printer:        cmd.Printer,
-		ServiceManager: cmd.ServiceManager,
+		ServiceManager: serviceManager,
 	}
 
 	listPodsSubcommand := servicesub.ListPodsSubcommand{
 		Printer:        cmd.Printer,
-		ServiceManager: cmd.ServiceManager,
+		ServiceManager: serviceManager,
 	}
 
 	buildSubcommand := servicesub.BuildSubcommand{
 		Printer:        cmd.Printer,
-		ServiceManager: cmd.ServiceManager,
-		ImageManager:   cmd.ImageManager,
+		ServiceManager: serviceManager,
+		ImageManager:   imageManager,
 	}
 
 	startSubcommand := servicesub.StartSubcommand{
 		Printer:          cmd.Printer,
-		ServiceManager:   cmd.ServiceManager,
-		KubernetesClient: cmd.KubernetesClient,
+		ServiceManager:   serviceManager,
+		KubernetesClient: kubernetesClient,
 	}
 
 	stopSubcommand := servicesub.StopSubcommand{
 		Printer:          cmd.Printer,
-		ServiceManager:   cmd.ServiceManager,
-		KubernetesClient: cmd.KubernetesClient,
+		ServiceManager:   serviceManager,
+		KubernetesClient: kubernetesClient,
 	}
 
 	return map[string]interfaces.Command{

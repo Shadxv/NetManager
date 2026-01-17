@@ -1,7 +1,9 @@
 package interfaces
 
+import "NetManager/internal/module"
+
 type ImageManager interface {
-	Init()
+	Init(manager *module.Manager)
 	Client() DockerClient
 	BuildImage(serviceModel ServiceModel) (bool, string)
 	TagImage(serviceModel ServiceModel, serviceManager ServiceManager) (bool, HarborData)

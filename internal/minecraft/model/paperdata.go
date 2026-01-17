@@ -4,6 +4,7 @@ import (
 	"NetManager/pkg/interfaces"
 	"NetManager/pkg/types"
 	"NetManager/pkg/util"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -12,46 +13,46 @@ import (
 )
 
 type PaperData struct {
-	groupName   string
-	version     string
-	build       int
-	minReplicas int
-	mongodbURI  string
-	redisURI    string
+	GroupNameField   string
+	VersionField     string
+	BuildField       int
+	MinReplicasField int
+	MongodbURIField  string
+	RedisURIField    string
 }
 
 func NewPaperData(groupName string, version string, build int, minReplicas int, mongodbURI string, redisURI string) *PaperData {
 	return &PaperData{
-		groupName:   groupName,
-		version:     version,
-		build:       build,
-		minReplicas: minReplicas,
-		mongodbURI:  mongodbURI,
-		redisURI:    redisURI,
+		GroupNameField:   groupName,
+		VersionField:     version,
+		BuildField:       build,
+		MinReplicasField: minReplicas,
+		MongodbURIField:  mongodbURI,
+		RedisURIField:    redisURI,
 	}
 }
 func (data *PaperData) GroupName() string {
-	return data.groupName
+	return data.GroupNameField
 }
 
 func (data *PaperData) Version() string {
-	return data.version
+	return data.VersionField
 }
 
 func (data *PaperData) BuildNumber() int {
-	return data.build
+	return data.BuildField
 }
 
 func (data *PaperData) MinReplicas() int {
-	return data.minReplicas
+	return data.MinReplicasField
 }
 
 func (data *PaperData) MongoDBURI() string {
-	return data.mongodbURI
+	return data.MongodbURIField
 }
 
 func (data *PaperData) RedisURI() string {
-	return data.redisURI
+	return data.RedisURIField
 }
 
 func (data *PaperData) Build(serviceModel interfaces.ServiceModel, printer interfaces.Printer, imageManager interfaces.ImageManager, serviceManager interfaces.ServiceManager) {
@@ -65,8 +66,8 @@ func (data *PaperData) Update(serviceModel interfaces.ServiceModel, printer inte
 func (data *PaperData) Stop(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
 	wasStatefulSetDeloyed, wasServiceDeployed := false, false
 
-	clusterManager.DeleteStatefulSet(serviceModel.Name())
-	clusterManager.DeleteService(serviceModel.Name() + "-service")
+	clusterManager.DeleteStatefulSet(serviceModel.Name(), serviceModel.Namespace())
+	clusterManager.DeleteService(serviceModel.Name()+"-service", serviceModel.Namespace())
 
 	if !wasStatefulSetDeloyed || !wasServiceDeployed {
 		printer.Print("Service "+serviceModel.Name()+" stopped.", printer.Service())
@@ -78,18 +79,18 @@ func (data *PaperData) Start(serviceModel interfaces.ServiceModel, printer inter
 }
 
 func (data *PaperData) Deploy(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
-	_, err := clusterManager.GetStatefulSetOrErr(serviceModel.Name())
+	_, err := clusterManager.GetStatefulSetOrErr(serviceModel.Name(), serviceModel.Namespace())
 	if err == nil {
 		printer.PrintColored("StatefulSet has already been deployed.", printer.Service(), types.Yellow)
 	} else {
-		clusterManager.CreateStatefulSet(data.generateStatefulSet(serviceModel))
+		clusterManager.CreateStatefulSet(data.generateStatefulSet(serviceModel), serviceModel.Namespace())
 	}
 
-	_, err = clusterManager.GetServiceOrErr(serviceModel.Name() + "-service")
+	_, err = clusterManager.GetServiceOrErr(serviceModel.Name()+"-service", serviceModel.Namespace())
 	if err == nil {
 		printer.PrintColored("Service has already been deployed.", printer.Service(), types.Yellow)
 	} else {
-		clusterManager.CreateService(data.generateService(serviceModel))
+		clusterManager.CreateService(data.generateService(serviceModel), serviceModel.Namespace())
 	}
 }
 
@@ -103,7 +104,7 @@ func (data *PaperData) generateStatefulSet(serviceModel interfaces.ServiceModel)
 		},
 		Spec: appsv1.StatefulSetSpec{
 			ServiceName: serviceModel.Name() + "-service",
-			Replicas:    util.IntToPtr(data.minReplicas),
+			Replicas:    util.IntToPtr(data.MinReplicasField),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": serviceModel.Name(),
@@ -129,15 +130,15 @@ func (data *PaperData) generateStatefulSet(serviceModel interfaces.ServiceModel)
 							Env: []corev1.EnvVar{
 								{
 									Name:  "MONGODB_URI",
-									Value: data.mongodbURI,
+									Value: data.MongodbURIField,
 								},
 								{
 									Name:  "REDIS_URI",
-									Value: data.redisURI,
+									Value: data.RedisURIField,
 								},
 								{
 									Name:  "GROUP_NAME",
-									Value: data.groupName,
+									Value: data.GroupNameField,
 								},
 								{
 									Name:  "SERVICE_NAME",

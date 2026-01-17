@@ -35,7 +35,7 @@ func (listener *RegisterServerRequestListener) Handle(packet interfaces.Packet) 
 	}
 
 	// FIXME: Change that so it could handle multiple replicas from 1 service
-	service, err := listener.clusterManager.GetServiceOrErr(regPacket.SenderServiceName + "-service")
+	service, err := listener.clusterManager.GetServiceOrErr(regPacket.SenderServiceName+"-service", listener.clusterManager.GetDefaultNamespace())
 	if err != nil {
 		return fmt.Errorf("error occured during casting packet")
 	}

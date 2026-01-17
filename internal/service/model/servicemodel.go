@@ -4,107 +4,113 @@ import (
 	"NetManager/internal/kubernetes/model"
 	"NetManager/pkg/interfaces"
 	"NetManager/pkg/types"
-	corev1 "k8s.io/api/core/v1"
 	"slices"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 type Service struct {
-	name              string
-	serviceType       string
-	status            string
-	imageName         string
-	currentVersion    string
-	availableVersions []string
-	appConfig         *interface{}
-	podInstances      map[string]interfaces.PodInstance
-	netService        *corev1.Service
-	serviceData       *interface{}
+	NameField              string
+	ServiceTypeField       string
+	StatusField            string
+	ImageNameField         string
+	NamespaceField         string
+	CurrentVersionField    string
+	AvailableVersionsField []string
+	// Config from k8s
+	appConfigField    interface{}                       `gob:"-"`
+	podInstancesField map[string]interfaces.PodInstance `gob:"-"`
+	netServiceField   *corev1.Service                   `gob:"-"`
+	ServiceDataField  interface{}
 }
 
-func NewService(name string, serviceType string, status string, imageName string, currentVersion string, availableVersions []string, serviceData *interface{}) *Service {
+func NewService(name string, serviceType string, status string, imageName string, namespace string, currentVersion string, availableVersions []string, serviceData interface{}) *Service {
 	return &Service{
-		name:              name,
-		serviceType:       serviceType,
-		status:            status,
-		imageName:         imageName,
-		currentVersion:    currentVersion,
-		availableVersions: availableVersions,
-		podInstances:      make(map[string]interfaces.PodInstance),
-		serviceData:       serviceData,
+		NameField:              name,
+		ServiceTypeField:       serviceType,
+		StatusField:            status,
+		ImageNameField:         imageName,
+		NamespaceField:         namespace,
+		CurrentVersionField:    currentVersion,
+		AvailableVersionsField: availableVersions,
+		podInstancesField:      make(map[string]interfaces.PodInstance),
+		ServiceDataField:       serviceData,
 	}
 }
 
-func CreateNewService(name string, serviceType string, serviceData *interface{}) *Service {
+func CreateNewService(name string, serviceType string, serviceData interface{}) *Service {
 	return &Service{
-		name:         name,
-		serviceType:  serviceType,
-		status:       types.Stopped,
-		imageName:    name,
-		podInstances: make(map[string]interfaces.PodInstance),
-		serviceData:  serviceData,
+		NameField:         name,
+		ServiceTypeField:  serviceType,
+		StatusField:       types.Stopped,
+		ImageNameField:    name,
+		podInstancesField: make(map[string]interfaces.PodInstance),
+		ServiceDataField:  serviceData,
 	}
 }
 
 func (service *Service) Name() string {
-	return service.name
+	return service.NameField
 }
 
 func (service *Service) ServiceType() string {
-	return service.serviceType
+	return service.ServiceTypeField
 }
 
 func (service *Service) Status() string {
-	return service.status
+	return service.StatusField
 }
 
 func (service *Service) SetStatus(status string) {
-	service.status = status
+	service.StatusField = status
 }
 
 func (service *Service) ImageName() string {
-	return service.imageName
+	return service.ImageNameField
 }
 
+func (service *Service) Namespace() string { return service.NamespaceField }
+
 func (service *Service) CurrentVersion() string {
-	return service.currentVersion
+	return service.CurrentVersionField
 }
 
 func (service *Service) SetCurrentVersion(currentVersion string) bool {
-	if slices.Contains(service.availableVersions, currentVersion) {
-		service.currentVersion = currentVersion
+	if slices.Contains(service.AvailableVersionsField, currentVersion) {
+		service.CurrentVersionField = currentVersion
 		return true
 	}
 	return false
 }
 
 func (service *Service) AvailableVersions() []string {
-	versionsCopy := make([]string, len(service.availableVersions))
-	copy(versionsCopy, service.availableVersions)
+	versionsCopy := make([]string, len(service.AvailableVersionsField))
+	copy(versionsCopy, service.AvailableVersionsField)
 	return versionsCopy
 }
 
 func (service *Service) AddVersion(version string) {
-	service.availableVersions = append(service.availableVersions, version)
+	service.AvailableVersionsField = append(service.AvailableVersionsField, version)
 }
 
-func (service *Service) AppConfig() *interface{} {
-	return service.appConfig
+func (service *Service) AppConfig() interface{} {
+	return service.appConfigField
 }
 
-func (service *Service) SetAppConfig(config *interface{}) {
-	service.appConfig = config
+func (service *Service) SetAppConfig(config interface{}) {
+	service.appConfigField = config
 }
 
 func (service *Service) RemoveAppConfig() {
-	service.appConfig = nil
+	service.appConfigField = nil
 }
 
 func (service *Service) PodInstances() map[string]interfaces.PodInstance {
-	return service.podInstances
+	return service.podInstancesField
 }
 
 func (service *Service) addPodInstance(instance interfaces.PodInstance) {
-	service.podInstances[instance.Name()] = instance
+	service.podInstancesField[instance.Name()] = instance
 }
 
 func (service *Service) AddPodInstance(name string, pod *corev1.Pod, status string) interfaces.PodInstance {
@@ -120,54 +126,54 @@ func (service *Service) CreatePodInstance(name string, pod *corev1.Pod) interfac
 }
 
 func (service *Service) RemovePodInstance(name string) {
-	delete(service.podInstances, name)
+	delete(service.podInstancesField, name)
 }
 
 func (service *Service) NetService() *corev1.Service {
-	return service.netService
+	return service.netServiceField
 }
 
 func (service *Service) SetNetSevice(netService *corev1.Service) {
-	service.netService = netService
+	service.netServiceField = netService
 }
 
 func (service *Service) RemoveNetService() {
-	service.netService = nil
+	service.netServiceField = nil
 }
 
-func (service *Service) ServiceData() *interface{} {
-	return service.serviceData
+func (service *Service) ServiceData() interface{} {
+	return service.ServiceDataField
 }
 
 func (service *Service) Build(printer interfaces.Printer, imageManager interfaces.ImageManager, serviceManager interfaces.ServiceManager) {
-	data := *service.serviceData
+	data := service.ServiceDataField
 	data.(interfaces.Data).Build(service, printer, imageManager, serviceManager)
 }
 
 func (service *Service) Update(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
-	data := *service.serviceData
+	data := service.ServiceDataField
 	data.(interfaces.Data).Update(service, printer, clusterManager)
 }
 
 func (service *Service) Stop(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
-	data := *service.serviceData
+	data := service.ServiceDataField
 	data.(interfaces.Data).Stop(service, printer, clusterManager)
 	service.SetStatus(types.Stopped)
 }
 
 func (service *Service) Start(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
-	data := *service.serviceData
+	data := service.ServiceDataField
 	data.(interfaces.Data).Start(service, printer, clusterManager)
 }
 
 func (service *Service) Deploy(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
-	data := *service.serviceData
+	data := service.ServiceDataField
 	data.(interfaces.Data).Deploy(service, printer, clusterManager)
 	service.updatePodInstances(clusterManager)
 }
 
 func (service *Service) updatePodInstances(clusterManager interfaces.ClusterManager) {
-	pods := clusterManager.GetPods("app=" + service.Name())
+	pods := clusterManager.GetPods("app="+service.Name(), service.Namespace())
 	if len(pods) != 0 {
 		for _, pod := range pods {
 			service.AddPodInstance(pod.Name, &pod, string(pod.Status.Phase))

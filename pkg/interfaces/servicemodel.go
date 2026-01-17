@@ -10,12 +10,13 @@ type ServiceModel interface {
 	Status() string
 	SetStatus(status string)
 	ImageName() string
+	Namespace() string
 	CurrentVersion() string
 	SetCurrentVersion(currentVersion string) bool
 	AvailableVersions() []string
 	AddVersion(version string)
-	AppConfig() *interface{}
-	SetAppConfig(config *interface{})
+	AppConfig() interface{}
+	SetAppConfig(config interface{})
 	RemoveAppConfig()
 	PodInstances() map[string]PodInstance
 	AddPodInstance(name string, pod *corev1.Pod, status string) PodInstance
@@ -24,7 +25,7 @@ type ServiceModel interface {
 	NetService() *corev1.Service
 	SetNetSevice(netService *corev1.Service)
 	RemoveNetService()
-	ServiceData() *interface{}
+	ServiceData() interface{}
 	Build(printer Printer, imageManager ImageManager, serviceManager ServiceManager)
 	Update(printer Printer, clusterManager ClusterManager)
 	Stop(printer Printer, clusterManager ClusterManager)

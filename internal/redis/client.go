@@ -1,15 +1,19 @@
 package redis
 
 import (
+	"NetManager/internal/kubernetes"
+	"NetManager/internal/module"
 	"NetManager/internal/redis/handler"
 	"NetManager/internal/redis/model"
+	serviceManager "NetManager/internal/service/manager"
 	"NetManager/pkg/interfaces"
 	"NetManager/pkg/types"
 	"context"
 	"fmt"
-	"github.com/redis/go-redis/v9"
 	"strconv"
 	"strings"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type Client struct {
@@ -20,23 +24,55 @@ type Client struct {
 	codec          interfaces.PacketCodec
 	listeners      map[string]interfaces.PacketHandler
 	pubsub         *redis.PubSub
+	status         string
 }
 
-func NewRedisClient(printer interfaces.Printer, clusterManager interfaces.ClusterManager) *Client {
+func NewRedisClient() *Client {
 	return &Client{
-		printer:        printer,
-		clusterManager: clusterManager,
-		codec:          model.NewPacketCodec(),
-		listeners:      map[string]interfaces.PacketHandler{},
+		codec:     model.NewPacketCodec(),
+		listeners: map[string]interfaces.PacketHandler{},
+		status:    types.Stopped,
 	}
 }
 
-func (redisClient *Client) Init(service interfaces.ServiceModel) {
+func (redisClient *Client) Init(moduleManager *module.Manager) {
+	redisClient.status = types.Starting
+
+	printer, err := module.GetTypedModule[interfaces.Printer](moduleManager, types.Console)
+	if err != nil {
+		redisClient.status = types.Disabled
+		return
+	}
+	redisClient.printer = printer
+
+	k8sClient, err := module.GetTypedModule[*kubernetes.Client](moduleManager, types.Kubernetes)
+	if err != nil {
+		redisClient.printer.PrintColored("Kubernetes module not found!", redisClient.printer.Service(), types.Red)
+		redisClient.status = types.Disabled
+		return
+	}
+	redisClient.clusterManager = k8sClient.ClusterManager()
+
+	svcManager, err := module.GetTypedModule[*serviceManager.ServiceManager](moduleManager, types.Services)
+	if err != nil {
+		redisClient.printer.PrintColored("ServiceManager module not found!", redisClient.printer.Service(), types.Red)
+		redisClient.status = types.Disabled
+		return
+	}
+
+	service := svcManager.GetService("redis")
+	if service == nil {
+		redisClient.printer.PrintColored("Redis service not found!", redisClient.printer.Service(), types.Red)
+		redisClient.status = types.Disabled
+		return
+	}
+
 	redisClient.printer.Print("Connecting to Redis client...", redisClient.printer.Service())
 	redisClient.data = interfaces.GetRedisData(service)
 
 	if redisClient.data == nil {
 		redisClient.printer.PrintColored("Redis data not found.", redisClient.printer.Service(), types.Red)
+		redisClient.status = types.Disabled
 		return
 	}
 
@@ -58,6 +94,40 @@ func (redisClient *Client) Init(service interfaces.ServiceModel) {
 	go redisClient.listen()
 
 	redisClient.printer.Print("Successfully connected to Redis client.", redisClient.printer.Service())
+	redisClient.status = types.Enabled
+}
+
+func (redisClient *Client) Disable(shutdown bool) {
+	if !shutdown {
+		redisClient.printer.PrintColored("This module cannot be disabled!", redisClient.printer.Service(), types.Red)
+		return
+	}
+	redisClient.status = types.Stopping
+	redisClient.Close()
+	redisClient.status = types.Disabled
+}
+
+func (redisClient *Client) Reload() {
+	redisClient.printer.PrintColored("This module cannot be reloaded!", redisClient.printer.Service(), types.Red)
+}
+
+func (redisClient *Client) SaveData() error {
+	return nil
+}
+
+func (redisClient *Client) LoadData() {
+}
+
+func (redisClient *Client) SetStatus(newStatus string) {
+	redisClient.status = newStatus
+}
+
+func (redisClient *Client) Status() string {
+	return redisClient.status
+}
+
+func (redisClient *Client) Type() string {
+	return types.RedisClient
 }
 
 func (redisClient *Client) Publish(channel string, packet interfaces.Packet) {
@@ -81,8 +151,12 @@ func (redisClient *Client) BuildChannel(groupName string, serviceName string, se
 }
 
 func (redisClient *Client) Close() {
-	redisClient.pubsub.Close()
-	redisClient.client.Close()
+	if redisClient.pubsub != nil {
+		redisClient.pubsub.Close()
+	}
+	if redisClient.client != nil {
+		redisClient.client.Close()
+	}
 }
 
 func (redisClient *Client) listen() {

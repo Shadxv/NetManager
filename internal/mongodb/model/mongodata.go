@@ -6,35 +6,35 @@ import (
 )
 
 type MongoData struct {
-	serviceUsername string
-	servicePassword string
-	internalURI     string
-	externalURI     string
+	ServiceUsernameField string
+	ServicePasswordField string
+	InternalURIField     string
+	ExternalURIField     string
 }
 
 func NewMongoData(serviceUsername string, servicePassword string, internalURI string, externalURI string) *MongoData {
 	return &MongoData{
-		serviceUsername: serviceUsername,
-		servicePassword: servicePassword,
-		internalURI:     internalURI,
-		externalURI:     externalURI,
+		ServiceUsernameField: serviceUsername,
+		ServicePasswordField: servicePassword,
+		InternalURIField:     internalURI,
+		ExternalURIField:     externalURI,
 	}
 }
 
 func (data *MongoData) ServiceUsername() string {
-	return data.serviceUsername
+	return data.ServiceUsernameField
 }
 
 func (data *MongoData) ServicePassword() string {
-	return data.servicePassword
+	return data.ServicePasswordField
 }
 
 func (data *MongoData) InternalURI() string {
-	return data.internalURI
+	return data.InternalURIField
 }
 
 func (data *MongoData) ExternalURI() string {
-	return data.externalURI
+	return data.ExternalURIField
 }
 
 func (data *MongoData) Build(serviceModel interfaces.ServiceModel, printer interfaces.Printer, imageManager interfaces.ImageManager, serviceManager interfaces.ServiceManager) {

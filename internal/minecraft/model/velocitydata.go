@@ -4,6 +4,7 @@ import (
 	"NetManager/pkg/interfaces"
 	"NetManager/pkg/types"
 	"NetManager/pkg/util"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -12,53 +13,53 @@ import (
 )
 
 type VelocityData struct {
-	groupName      string
-	version        string
-	build          int
-	port           int
-	replicasAmount int
-	mongodbURI     string
-	redisURI       string
+	GroupNameField      string
+	VersionField        string
+	BuildField          int
+	PortField           int
+	ReplicasAmountField int
+	MongodbURIField     string
+	RedisURIField       string
 }
 
 func NewVelocityData(groupName string, version string, build int, port int, replicasAmount int, mongodbURI string, redisURI string) *VelocityData {
 	return &VelocityData{
-		groupName:      groupName,
-		version:        version,
-		build:          build,
-		port:           port,
-		replicasAmount: replicasAmount,
-		mongodbURI:     mongodbURI,
-		redisURI:       redisURI,
+		GroupNameField:      groupName,
+		VersionField:        version,
+		BuildField:          build,
+		PortField:           port,
+		ReplicasAmountField: replicasAmount,
+		MongodbURIField:     mongodbURI,
+		RedisURIField:       redisURI,
 	}
 }
 
 func (data *VelocityData) GroupName() string {
-	return data.groupName
+	return data.GroupNameField
 }
 
 func (data *VelocityData) Version() string {
-	return data.version
+	return data.VersionField
 }
 
 func (data *VelocityData) BuildNumber() int {
-	return data.build
+	return data.BuildField
 }
 
 func (data *VelocityData) Port() int {
-	return data.port
+	return data.PortField
 }
 
 func (data *VelocityData) ReplicasAmount() int {
-	return data.replicasAmount
+	return data.ReplicasAmountField
 }
 
 func (data *VelocityData) MongoDBURI() string {
-	return data.mongodbURI
+	return data.MongodbURIField
 }
 
 func (data *VelocityData) RedisURI() string {
-	return data.redisURI
+	return data.RedisURIField
 }
 
 func (data *VelocityData) Build(serviceModel interfaces.ServiceModel, printer interfaces.Printer, imageManager interfaces.ImageManager, serviceManager interfaces.ServiceManager) {
@@ -71,8 +72,8 @@ func (data *VelocityData) Update(serviceModel interfaces.ServiceModel, printer i
 func (data *VelocityData) Stop(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
 	wasStatefulSetDeloyed, wasServiceDeployed := false, false
 
-	clusterManager.DeleteStatefulSet(serviceModel.Name())
-	clusterManager.DeleteService(serviceModel.Name() + "-service")
+	clusterManager.DeleteStatefulSet(serviceModel.Name(), serviceModel.Namespace())
+	clusterManager.DeleteService(serviceModel.Name()+"-service", serviceModel.Namespace())
 
 	if !wasStatefulSetDeloyed || !wasServiceDeployed {
 		printer.Print("Service "+serviceModel.Name()+" stopped.", printer.Service())
@@ -84,18 +85,18 @@ func (data *VelocityData) Start(serviceModel interfaces.ServiceModel, printer in
 }
 
 func (data *VelocityData) Deploy(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
-	_, err := clusterManager.GetStatefulSetOrErr(serviceModel.Name())
+	_, err := clusterManager.GetStatefulSetOrErr(serviceModel.Name(), serviceModel.Namespace())
 	if err == nil {
 		printer.PrintColored("StatefulSet has already been deployed.", printer.Service(), types.Yellow)
 	} else {
-		clusterManager.CreateStatefulSet(data.generateStatefulSet(serviceModel))
+		clusterManager.CreateStatefulSet(data.generateStatefulSet(serviceModel), serviceModel.Namespace())
 	}
 
-	_, err = clusterManager.GetServiceOrErr(serviceModel.Name() + "-service")
+	_, err = clusterManager.GetServiceOrErr(serviceModel.Name()+"-service", serviceModel.Namespace())
 	if err == nil {
 		printer.PrintColored("Service has already been deployed.", printer.Service(), types.Yellow)
 	} else {
-		clusterManager.CreateService(data.generateService(serviceModel))
+		clusterManager.CreateService(data.generateService(serviceModel), serviceModel.Namespace())
 	}
 }
 
@@ -109,7 +110,7 @@ func (data *VelocityData) generateStatefulSet(serviceModel interfaces.ServiceMod
 		},
 		Spec: appsv1.StatefulSetSpec{
 			ServiceName: serviceModel.Name() + "-service",
-			Replicas:    util.IntToPtr(data.replicasAmount),
+			Replicas:    util.IntToPtr(data.ReplicasAmountField),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": serviceModel.Name(),
@@ -135,15 +136,15 @@ func (data *VelocityData) generateStatefulSet(serviceModel interfaces.ServiceMod
 							Env: []corev1.EnvVar{
 								{
 									Name:  "MONGODB_URI",
-									Value: data.mongodbURI,
+									Value: data.MongodbURIField,
 								},
 								{
 									Name:  "REDIS_URI",
-									Value: data.redisURI,
+									Value: data.RedisURIField,
 								},
 								{
 									Name:  "GROUP_NAME",
-									Value: data.groupName,
+									Value: data.GroupNameField,
 								},
 								{
 									Name:  "SERVICE_NAME",
@@ -195,7 +196,7 @@ func (data *VelocityData) generateService(serviceModel interfaces.ServiceModel) 
 				{
 					Port:       25565,
 					TargetPort: intstr.IntOrString{IntVal: 25565},
-					NodePort:   int32(data.port),
+					NodePort:   int32(data.PortField),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},

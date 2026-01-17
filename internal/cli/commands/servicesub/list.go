@@ -3,6 +3,7 @@ package servicesub
 import (
 	"NetManager/pkg/interfaces"
 	"bytes"
+
 	"github.com/olekukonko/tablewriter"
 )
 
@@ -16,7 +17,7 @@ func (cmd *ListSubcommand) Execute(args []string) {
 	table := tablewriter.NewWriter(buf)
 	table.SetHeader([]string{"Name", "Type", "Status", "Image", "Version"})
 
-	services := cmd.ServiceManager.Services()
+	services := cmd.ServiceManager.GetServices()
 	for _, s := range services {
 		table.Append([]string{
 			s.Name(),

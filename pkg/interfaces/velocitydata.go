@@ -11,7 +11,7 @@ type VelocityData interface {
 }
 
 func GetVelocityData(service ServiceModel) VelocityData {
-	data := *service.ServiceData()
+	data := service.ServiceData()
 	if data, ok := data.(VelocityData); ok {
 		return data
 	}
