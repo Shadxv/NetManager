@@ -12,4 +12,5 @@ const (
 	Kubernetes  = "KUBERNETES"
 	Services    = "SERVICES"
 	RedisClient = "REDIS_CLIENT"
+	Gateway     = "GATEWAY"
 )

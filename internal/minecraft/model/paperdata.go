@@ -4,6 +4,7 @@ import (
 	"NetManager/pkg/interfaces"
 	"NetManager/pkg/types"
 	"NetManager/pkg/util"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -65,8 +66,8 @@ func (data *PaperData) Update(serviceModel interfaces.ServiceModel, printer inte
 func (data *PaperData) Stop(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
 	wasStatefulSetDeloyed, wasServiceDeployed := false, false
 
-	clusterManager.DeleteStatefulSet(serviceModel.Name())
-	clusterManager.DeleteService(serviceModel.Name() + "-service")
+	clusterManager.DeleteStatefulSet(serviceModel.Name(), serviceModel.Namespace())
+	clusterManager.DeleteService(serviceModel.Name()+"-service", serviceModel.Namespace())
 
 	if !wasStatefulSetDeloyed || !wasServiceDeployed {
 		printer.Print("Service "+serviceModel.Name()+" stopped.", printer.Service())
@@ -78,18 +79,18 @@ func (data *PaperData) Start(serviceModel interfaces.ServiceModel, printer inter
 }
 
 func (data *PaperData) Deploy(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
-	_, err := clusterManager.GetStatefulSetOrErr(serviceModel.Name())
+	_, err := clusterManager.GetStatefulSetOrErr(serviceModel.Name(), serviceModel.Namespace())
 	if err == nil {
 		printer.PrintColored("StatefulSet has already been deployed.", printer.Service(), types.Yellow)
 	} else {
-		clusterManager.CreateStatefulSet(data.generateStatefulSet(serviceModel))
+		clusterManager.CreateStatefulSet(data.generateStatefulSet(serviceModel), serviceModel.Namespace())
 	}
 
-	_, err = clusterManager.GetServiceOrErr(serviceModel.Name() + "-service")
+	_, err = clusterManager.GetServiceOrErr(serviceModel.Name()+"-service", serviceModel.Namespace())
 	if err == nil {
 		printer.PrintColored("Service has already been deployed.", printer.Service(), types.Yellow)
 	} else {
-		clusterManager.CreateService(data.generateService(serviceModel))
+		clusterManager.CreateService(data.generateService(serviceModel), serviceModel.Namespace())
 	}
 }
 

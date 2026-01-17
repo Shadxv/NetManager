@@ -5,12 +5,13 @@ import (
 	"NetManager/pkg/types"
 	"NetManager/pkg/util"
 	"fmt"
+	"strconv"
+	"time"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"strconv"
-	"time"
 )
 
 type RedisData struct {
@@ -71,10 +72,10 @@ func (data *RedisData) Update(serviceModel interfaces.ServiceModel, printer inte
 
 func (data *RedisData) Stop(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
 	printer.Print("Stopping Redis service...", printer.Service())
-	clusterManager.DeleteDeployment(serviceModel.Name())
-	clusterManager.DeleteConfigMap(serviceModel.Name() + "-config")
-	clusterManager.DeleteService(serviceModel.Name() + "-internal")
-	clusterManager.DeleteService(serviceModel.Name() + "-external")
+	clusterManager.DeleteDeployment(serviceModel.Name(), serviceModel.Namespace())
+	clusterManager.DeleteConfigMap(serviceModel.Name()+"-config", serviceModel.Namespace())
+	clusterManager.DeleteService(serviceModel.Name()+"-internal", serviceModel.Namespace())
+	clusterManager.DeleteService(serviceModel.Name()+"-external", serviceModel.Namespace())
 	printer.Print("Redis service has been stopped", printer.Service())
 }
 
@@ -84,24 +85,24 @@ func (data *RedisData) Start(serviceModel interfaces.ServiceModel, printer inter
 
 func (data *RedisData) Deploy(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
 	printer.Print("Checking Redis services statuses...", printer.Service())
-	_, err := clusterManager.GetConfigMapOrErr(serviceModel.Name() + "-config")
+	_, err := clusterManager.GetConfigMapOrErr(serviceModel.Name()+"-config", serviceModel.Namespace())
 	if err != nil {
-		clusterManager.CreateConfigMap(data.generateConfigMap(serviceModel))
+		clusterManager.CreateConfigMap(data.generateConfigMap(serviceModel), serviceModel.Namespace())
 	}
 
-	_, err = clusterManager.GetDeploymentOrErr(serviceModel.Name())
+	_, err = clusterManager.GetDeploymentOrErr(serviceModel.Name(), serviceModel.Namespace())
 	if err != nil {
-		clusterManager.CreateDeployment(data.generateDeployment(serviceModel))
+		clusterManager.CreateDeployment(data.generateDeployment(serviceModel), serviceModel.Namespace())
 	}
 
-	_, err = clusterManager.GetServiceOrErr(serviceModel.Name() + "-internal")
+	_, err = clusterManager.GetServiceOrErr(serviceModel.Name()+"-internal", serviceModel.Namespace())
 	if err != nil {
-		clusterManager.CreateService(data.generateClusterIPService(serviceModel))
+		clusterManager.CreateService(data.generateClusterIPService(serviceModel), serviceModel.Namespace())
 	}
 
-	_, err = clusterManager.GetServiceOrErr(serviceModel.Name() + "-external")
+	_, err = clusterManager.GetServiceOrErr(serviceModel.Name()+"-external", serviceModel.Namespace())
 	if err != nil {
-		clusterManager.CreateService(data.generateNodePortService(serviceModel))
+		clusterManager.CreateService(data.generateNodePortService(serviceModel), serviceModel.Namespace())
 	}
 
 	var internalService *corev1.Service
@@ -294,17 +295,17 @@ func (data *RedisData) waitForServicesReady(serviceModel interfaces.ServiceModel
 		case <-timeout:
 			return nil, nil, fmt.Errorf("timeout waiting for Redis services to be ready")
 		case <-ticker.C:
-			internalService, internalReady, err := data.isServiceReady(serviceModel.Name()+"-internal", clusterManager)
+			internalService, internalReady, err := data.isServiceReady(serviceModel.Name()+"-internal", serviceModel, clusterManager)
 			if err != nil {
 				return nil, nil, fmt.Errorf("error checking internal service: %w", err)
 			}
 
-			externalService, externalReady, err := data.isServiceReady(serviceModel.Name()+"-external", clusterManager)
+			externalService, externalReady, err := data.isServiceReady(serviceModel.Name()+"-external", serviceModel, clusterManager)
 			if err != nil {
 				return nil, nil, fmt.Errorf("error checking external service: %w", err)
 			}
 
-			deploymentReady, err := data.isDeploymentReady(serviceModel.Name(), clusterManager)
+			deploymentReady, err := data.isDeploymentReady(serviceModel.Name(), serviceModel, clusterManager)
 			if err != nil {
 				return nil, nil, fmt.Errorf("error checking deployment: %w", err)
 			}
@@ -316,8 +317,8 @@ func (data *RedisData) waitForServicesReady(serviceModel interfaces.ServiceModel
 	}
 }
 
-func (data *RedisData) isServiceReady(name string, clusterManager interfaces.ClusterManager) (*corev1.Service, bool, error) {
-	service, err := clusterManager.GetServiceOrErr(name)
+func (data *RedisData) isServiceReady(name string, serviceModel interfaces.ServiceModel, clusterManager interfaces.ClusterManager) (*corev1.Service, bool, error) {
+	service, err := clusterManager.GetServiceOrErr(name, serviceModel.Namespace())
 	if err != nil {
 		return nil, false, err
 	}
@@ -337,8 +338,8 @@ func (data *RedisData) isServiceReady(name string, clusterManager interfaces.Clu
 	return service, true, nil
 }
 
-func (data *RedisData) isDeploymentReady(name string, clusterManager interfaces.ClusterManager) (bool, error) {
-	deployment, err := clusterManager.GetDeploymentOrErr(name)
+func (data *RedisData) isDeploymentReady(name string, serviceModel interfaces.ServiceModel, clusterManager interfaces.ClusterManager) (bool, error) {
+	deployment, err := clusterManager.GetDeploymentOrErr(name, serviceModel.Namespace())
 	if err != nil {
 		return false, err
 	}
@@ -347,11 +348,11 @@ func (data *RedisData) isDeploymentReady(name string, clusterManager interfaces.
 		return false, nil
 	}
 
-	return data.arePodsReady(name, clusterManager)
+	return data.arePodsReady(name, serviceModel, clusterManager)
 }
 
-func (data *RedisData) arePodsReady(name string, clusterManager interfaces.ClusterManager) (bool, error) {
-	pods, err := clusterManager.GetPodsOrErr("app=" + name)
+func (data *RedisData) arePodsReady(name string, serviceModel interfaces.ServiceModel, clusterManager interfaces.ClusterManager) (bool, error) {
+	pods, err := clusterManager.GetPodsOrErr("app="+name, serviceModel.Namespace())
 	if err != nil {
 		return false, err
 	}

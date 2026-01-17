@@ -132,12 +132,13 @@ func (manager *ServiceManager) AddNewService(name string, serviceType string, se
 	return serviceModel
 }
 
-func (manager *ServiceManager) AddService(name string, serviceType string, status string, image string, version string, serviceData interface{}) interfaces.ServiceModel {
+func (manager *ServiceManager) AddService(name string, serviceType string, status string, image string, namespace string, version string, serviceData interface{}) interfaces.ServiceModel {
 	serviceModel := model.NewService(
 		name,
 		serviceType,
 		status,
 		image,
+		namespace,
 		version,
 		make([]string, 0),
 		serviceData,

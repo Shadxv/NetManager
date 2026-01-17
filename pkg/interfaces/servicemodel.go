@@ -10,6 +10,7 @@ type ServiceModel interface {
 	Status() string
 	SetStatus(status string)
 	ImageName() string
+	Namespace() string
 	CurrentVersion() string
 	SetCurrentVersion(currentVersion string) bool
 	AvailableVersions() []string

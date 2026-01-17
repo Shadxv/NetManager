@@ -14,6 +14,7 @@ type Service struct {
 	ServiceTypeField       string
 	StatusField            string
 	ImageNameField         string
+	NamespaceField         string
 	CurrentVersionField    string
 	AvailableVersionsField []string
 	// Config from k8s
@@ -23,12 +24,13 @@ type Service struct {
 	ServiceDataField  interface{}
 }
 
-func NewService(name string, serviceType string, status string, imageName string, currentVersion string, availableVersions []string, serviceData interface{}) *Service {
+func NewService(name string, serviceType string, status string, imageName string, namespace string, currentVersion string, availableVersions []string, serviceData interface{}) *Service {
 	return &Service{
 		NameField:              name,
 		ServiceTypeField:       serviceType,
 		StatusField:            status,
 		ImageNameField:         imageName,
+		NamespaceField:         namespace,
 		CurrentVersionField:    currentVersion,
 		AvailableVersionsField: availableVersions,
 		podInstancesField:      make(map[string]interfaces.PodInstance),
@@ -66,6 +68,8 @@ func (service *Service) SetStatus(status string) {
 func (service *Service) ImageName() string {
 	return service.ImageNameField
 }
+
+func (service *Service) Namespace() string { return service.NamespaceField }
 
 func (service *Service) CurrentVersion() string {
 	return service.CurrentVersionField
@@ -169,7 +173,7 @@ func (service *Service) Deploy(printer interfaces.Printer, clusterManager interf
 }
 
 func (service *Service) updatePodInstances(clusterManager interfaces.ClusterManager) {
-	pods := clusterManager.GetPods("app=" + service.Name())
+	pods := clusterManager.GetPods("app="+service.Name(), service.Namespace())
 	if len(pods) != 0 {
 		for _, pod := range pods {
 			service.AddPodInstance(pod.Name, &pod, string(pod.Status.Phase))

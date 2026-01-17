@@ -11,6 +11,7 @@ func CreateHarborService(printer interfaces.Printer, config interfaces.HarborCon
 		types.Harbor,
 		types.Running,
 		"goharbor",
+		"harbor",
 		"",
 		NewHarborData(
 			config.GetDomain(),

@@ -72,8 +72,8 @@ func (data *VelocityData) Update(serviceModel interfaces.ServiceModel, printer i
 func (data *VelocityData) Stop(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
 	wasStatefulSetDeloyed, wasServiceDeployed := false, false
 
-	clusterManager.DeleteStatefulSet(serviceModel.Name())
-	clusterManager.DeleteService(serviceModel.Name() + "-service")
+	clusterManager.DeleteStatefulSet(serviceModel.Name(), serviceModel.Namespace())
+	clusterManager.DeleteService(serviceModel.Name()+"-service", serviceModel.Namespace())
 
 	if !wasStatefulSetDeloyed || !wasServiceDeployed {
 		printer.Print("Service "+serviceModel.Name()+" stopped.", printer.Service())
@@ -85,18 +85,18 @@ func (data *VelocityData) Start(serviceModel interfaces.ServiceModel, printer in
 }
 
 func (data *VelocityData) Deploy(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
-	_, err := clusterManager.GetStatefulSetOrErr(serviceModel.Name())
+	_, err := clusterManager.GetStatefulSetOrErr(serviceModel.Name(), serviceModel.Namespace())
 	if err == nil {
 		printer.PrintColored("StatefulSet has already been deployed.", printer.Service(), types.Yellow)
 	} else {
-		clusterManager.CreateStatefulSet(data.generateStatefulSet(serviceModel))
+		clusterManager.CreateStatefulSet(data.generateStatefulSet(serviceModel), serviceModel.Namespace())
 	}
 
-	_, err = clusterManager.GetServiceOrErr(serviceModel.Name() + "-service")
+	_, err = clusterManager.GetServiceOrErr(serviceModel.Name()+"-service", serviceModel.Namespace())
 	if err == nil {
 		printer.PrintColored("Service has already been deployed.", printer.Service(), types.Yellow)
 	} else {
-		clusterManager.CreateService(data.generateService(serviceModel))
+		clusterManager.CreateService(data.generateService(serviceModel), serviceModel.Namespace())
 	}
 }
 

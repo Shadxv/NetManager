@@ -11,6 +11,7 @@ func CreateNewRedisService(printer interfaces.Printer, config interfaces.RedisCo
 		types.Redis,
 		types.Starting,
 		config.GetDockerImage(),
+		"redis",
 		config.GetVersion(),
 		NewRedisData(
 			config.GetPort(),

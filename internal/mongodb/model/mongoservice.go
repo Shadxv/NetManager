@@ -11,6 +11,7 @@ func CreateNewMongoService(config interfaces.MongoConfig, serviceManager interfa
 		types.MongoDB,
 		types.Starting,
 		"mongodb",
+		"mongodb",
 		"8.0.4",
 		NewMongoData(
 			config.GetServiceUsername(),

@@ -5,6 +5,7 @@ import (
 	"NetManager/pkg/types"
 	"encoding/base64"
 	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -58,12 +59,12 @@ func (data *HarborData) Start(serviceModel interfaces.ServiceModel, printer inte
 }
 
 func (data *HarborData) Deploy(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
-	_, err := clusterManager.GetSecretOrErr("harbor-credentials-secret")
+	_, err := clusterManager.GetSecretOrErr("harbor-credentials-secret", serviceModel.Namespace())
 	if err == nil {
 		return
 	}
 
-	clusterManager.CreateSecret(data.createCredentialsSecret())
+	clusterManager.CreateSecret(data.createCredentialsSecret(), serviceModel.Namespace())
 	printer.Print("Created Harbor credentials secret.", printer.Service())
 }
 

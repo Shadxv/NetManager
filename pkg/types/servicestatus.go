@@ -8,4 +8,5 @@ const (
 	Enabled    = "ENABLED"
 	Disabled   = "DISABLED"
 	Terminated = "TERMINATED"
+	Creating   = "CREATING"
 )

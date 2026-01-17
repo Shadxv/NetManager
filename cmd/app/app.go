@@ -1,6 +1,7 @@
 package main
 
 import (
+	"NetManager/api"
 	"NetManager/internal/cli"
 	configManager "NetManager/internal/config/manager"
 	dockerManager "NetManager/internal/docker/manager"
@@ -64,6 +65,9 @@ func main() {
 
 	var redisModule = redis.NewRedisClient()
 	moduleManager.AddModule(redisModule)
+
+	var gatewayServer = api.NewServer(&mainWaitGroup)
+	moduleManager.AddModule(gatewayServer)
 
 	moduleManager.Init()
 
