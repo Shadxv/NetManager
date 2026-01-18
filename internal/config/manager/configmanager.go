@@ -43,8 +43,6 @@ func (configManager *ConfigManager) Disable(shutdown bool) {
 		}
 		return
 	}
-	configManager.status = types.Stopping
-	// save data (services)
 	configManager.status = types.Disabled
 }
 

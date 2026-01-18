@@ -2,7 +2,9 @@ package api
 
 import (
 	"NetManager/api/controllers"
+	"NetManager/api/sse"
 	"NetManager/internal/module"
+	serviceManager "NetManager/internal/service/manager"
 	"NetManager/pkg/interfaces"
 	"NetManager/pkg/types"
 	"context"
@@ -11,6 +13,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
 )
 
 type Server struct {
@@ -35,6 +38,15 @@ func NewServer(wg *sync.WaitGroup) *Server {
 }
 
 func (s *Server) routes() {
+	s.router.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
+
 	s.router.Route("/gateway", func(r chi.Router) {
 		r.Mount("/v1", controllers.NewV1(s.moduleManager, s.printer, s.service).Router())
 	})
@@ -53,6 +65,18 @@ func (s *Server) Init(moduleManager *module.Manager) {
 
 	s.routes()
 
+	svcManager, err := module.GetTypedModule[*serviceManager.ServiceManager](moduleManager, types.Services)
+	if err == nil {
+		sseServer := sse.NewServer()
+		sseServer.SetServiceManager(svcManager)
+		go sseServer.Run()
+		svcManager.SetBroadcaster(sseServer)
+		s.router.Handle("/gateway/events/service", sseServer)
+		s.router.Handle("/gateway/events/pod", sseServer)
+	} else {
+		s.printer.PrintColored("Could not initialize SSE: ServiceManager not found", s.service, types.Red)
+	}
+
 	s.httpServer = &http.Server{
 		Addr:    ":4000",
 		Handler: s.router,
@@ -64,7 +88,7 @@ func (s *Server) Init(moduleManager *module.Manager) {
 		s.status = types.Enabled
 		s.printer.PrintColored("Web API starting on :4000", s.printer.Service(), types.Green)
 		err = s.httpServer.ListenAndServe()
-		if err != nil {
+		if err != nil && err != http.ErrServerClosed {
 			s.printer.PrintColored(err.Error(), s.printer.Service(), types.Red)
 			s.status = types.Disabled
 			s.wg.Done()
@@ -78,13 +102,13 @@ func (s *Server) Disable(shutdown bool) {
 	}
 
 	s.status = types.Stopping
-	s.printer.PrintColored("Stopping Web API...", s.service, types.Yellow)
+	s.printer.Print("Stopping Web API...", s.service)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := s.httpServer.Shutdown(ctx); err != nil {
-		s.printer.PrintColored("API Force Shutdown: "+err.Error(), s.service, types.Red)
+		s.printer.Print("API Force Shutdown: "+err.Error(), s.service)
 	}
 
 	s.status = types.Disabled

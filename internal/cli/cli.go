@@ -22,6 +22,7 @@ type Console struct {
 	isRunning         bool
 	isWaitingForInput bool
 	isClosing         bool
+	cleanupStarted    bool
 	isPaused          bool
 	pendingMessages   []string
 	printChan         chan string
@@ -65,7 +66,7 @@ func (console *Console) Init(moduleManager *module.Manager) {
 	console.SetStatus(types.Enabled)
 
 	// Run logic
-	console.consoleWaitGroup.Add(3)
+	console.consoleWaitGroup.Add(2)
 	go console.handleInput()
 	go console.printHandler()
 }
@@ -100,7 +101,7 @@ func (console *Console) Type() string {
 
 func (console *Console) Run() {
 	//To remove
-	console.consoleWaitGroup.Add(3)
+	console.consoleWaitGroup.Add(2)
 	go console.handleInput()
 	go console.printHandler()
 
@@ -112,10 +113,12 @@ func (console *Console) Close() {
 	console.mutex.Lock()
 	defer console.mutex.Unlock()
 
-	if !console.isRunning {
+	if !console.isRunning || console.cleanupStarted {
 		return
 	}
 
+	console.cleanupStarted = true
+	console.isClosing = true
 	// Explanation is in Init()
 	console.printHandlerWG.Done()
 	console.isWaitingForInput = false
@@ -176,6 +179,8 @@ func (console *Console) Resume() {
 			console.printPrompt()
 		}
 	}
+	// Clear pending messages
+	console.pendingMessages = nil
 
 	console.isPaused = false
 	console.isWaitingForInput = true
@@ -311,6 +316,7 @@ func (console *Console) printHandler() {
 			console.mutex.Lock()
 			console.pendingMessages = append(console.pendingMessages, msg)
 			console.mutex.Unlock()
+			console.printHandlerWG.Done()
 			continue
 		}
 
@@ -346,5 +352,7 @@ func (console *Console) PrintColored(message string, service interfaces.Service,
 }
 
 func (console *Console) SetClosingStatus() {
+	console.mutex.Lock()
+	defer console.mutex.Unlock()
 	console.isClosing = true
 }

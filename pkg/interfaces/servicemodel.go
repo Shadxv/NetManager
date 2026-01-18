@@ -31,4 +31,6 @@ type ServiceModel interface {
 	Stop(printer Printer, clusterManager ClusterManager)
 	Start(printer Printer, clusterManager ClusterManager)
 	Deploy(printer Printer, clusterManager ClusterManager)
+	SetBroadcaster(broadcaster Broadcaster)
+	InitNonSavedFields()
 }

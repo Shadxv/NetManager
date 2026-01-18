@@ -22,6 +22,7 @@ type Service struct {
 	podInstancesField map[string]interfaces.PodInstance `gob:"-"`
 	netServiceField   *corev1.Service                   `gob:"-"`
 	ServiceDataField  interface{}
+	broadcaster       interfaces.Broadcaster `gob:"-"`
 }
 
 func NewService(name string, serviceType string, status string, imageName string, namespace string, currentVersion string, availableVersions []string, serviceData interface{}) *Service {
@@ -38,15 +39,26 @@ func NewService(name string, serviceType string, status string, imageName string
 	}
 }
 
-func CreateNewService(name string, serviceType string, serviceData interface{}) *Service {
+func CreateNewService(name string, serviceType string, namespace string, serviceData interface{}) *Service {
 	return &Service{
 		NameField:         name,
 		ServiceTypeField:  serviceType,
 		StatusField:       types.Stopped,
 		ImageNameField:    name,
+		NamespaceField:    namespace,
 		podInstancesField: make(map[string]interfaces.PodInstance),
 		ServiceDataField:  serviceData,
 	}
+}
+
+func (service *Service) InitNonSavedFields() {
+	if service.podInstancesField == nil {
+		service.podInstancesField = make(map[string]interfaces.PodInstance)
+	}
+}
+
+func (service *Service) SetBroadcaster(broadcaster interfaces.Broadcaster) {
+	service.broadcaster = broadcaster
 }
 
 func (service *Service) Name() string {
@@ -63,6 +75,11 @@ func (service *Service) Status() string {
 
 func (service *Service) SetStatus(status string) {
 	service.StatusField = status
+	if service.broadcaster != nil {
+		service.broadcaster.BroadcastEvent(service.Name(), "status", map[string]interface{}{
+			"status": status,
+		})
+	}
 }
 
 func (service *Service) ImageName() string {
@@ -78,6 +95,11 @@ func (service *Service) CurrentVersion() string {
 func (service *Service) SetCurrentVersion(currentVersion string) bool {
 	if slices.Contains(service.AvailableVersionsField, currentVersion) {
 		service.CurrentVersionField = currentVersion
+		if service.broadcaster != nil {
+			service.broadcaster.BroadcastEvent(service.Name(), "current_version", map[string]interface{}{
+				"version": currentVersion,
+			})
+		}
 		return true
 	}
 	return false
@@ -90,7 +112,15 @@ func (service *Service) AvailableVersions() []string {
 }
 
 func (service *Service) AddVersion(version string) {
+	if slices.Contains(service.AvailableVersionsField, version) {
+		return
+	}
 	service.AvailableVersionsField = append(service.AvailableVersionsField, version)
+	if service.broadcaster != nil {
+		service.broadcaster.BroadcastEvent(service.Name(), "version", map[string]interface{}{
+			"newVersion": version,
+		})
+	}
 }
 
 func (service *Service) AppConfig() interface{} {
@@ -156,20 +186,37 @@ func (service *Service) Update(printer interfaces.Printer, clusterManager interf
 }
 
 func (service *Service) Stop(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
+	if service.Status() == types.Stopped {
+		printer.PrintColored("Service "+service.Name()+" is already stopped.", printer.Service(), types.Red)
+		return
+	}
+	service.SetStatus(types.Stopping)
 	data := service.ServiceDataField
 	data.(interfaces.Data).Stop(service, printer, clusterManager)
 	service.SetStatus(types.Stopped)
 }
 
 func (service *Service) Start(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
+	if (service.ImageNameField == "" || service.CurrentVersionField == "") && (service.ServiceType() != types.Harbor && service.ServiceType() != types.MongoDB) {
+		printer.PrintColored("Service "+service.Name()+" is not configured correctly.", printer.Service(), types.Red)
+		return
+	}
+	service.SetStatus(types.Starting)
 	data := service.ServiceDataField
 	data.(interfaces.Data).Start(service, printer, clusterManager)
+	service.SetStatus(types.Running)
 }
 
 func (service *Service) Deploy(printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
+	if (service.ImageNameField == "" || service.CurrentVersionField == "") && (service.ServiceType() != types.Harbor && service.ServiceType() != types.MongoDB) {
+		printer.PrintColored("Service "+service.Name()+" is not configured correctly.", printer.Service(), types.Red)
+		return
+	}
+	service.SetStatus(types.Starting)
 	data := service.ServiceDataField
 	data.(interfaces.Data).Deploy(service, printer, clusterManager)
 	service.updatePodInstances(clusterManager)
+	service.SetStatus(types.Running)
 }
 
 func (service *Service) updatePodInstances(clusterManager interfaces.ClusterManager) {

@@ -1,12 +1,16 @@
 package interfaces
 
 import (
+	"io"
+
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/watch"
 )
 
 type ClusterManager interface {
 	GetDefaultNamespace() string
+	CreateNamespace(name string) error
 
 	CreateDeployment(deployment *appsv1.Deployment, namespace string) *appsv1.Deployment
 	UpdateDeployment(deployment *appsv1.Deployment, namespace string)
@@ -40,6 +44,9 @@ type ClusterManager interface {
 
 	GetPods(labelSelector string, namespace string) []corev1.Pod
 	GetPodsOrErr(labelSelector string, namespace string) ([]corev1.Pod, error)
+	GetPodLogs(podName string, namespace string) (io.ReadCloser, error)
+	WatchPods(labelSelector string, namespace string) (watch.Interface, error)
+	DeletePod(name string, namespace string) error
 
 	GetNodes() ([]corev1.Node, error)
 }

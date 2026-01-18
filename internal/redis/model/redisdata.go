@@ -85,7 +85,14 @@ func (data *RedisData) Start(serviceModel interfaces.ServiceModel, printer inter
 
 func (data *RedisData) Deploy(serviceModel interfaces.ServiceModel, printer interfaces.Printer, clusterManager interfaces.ClusterManager) {
 	printer.Print("Checking Redis services statuses...", printer.Service())
-	_, err := clusterManager.GetConfigMapOrErr(serviceModel.Name()+"-config", serviceModel.Namespace())
+	err := clusterManager.CreateNamespace(serviceModel.Namespace())
+	if err != nil {
+		printer.PrintColored("Error occured during creating redis namespace.", printer.Service(), types.Red)
+		printer.PrintColored(err.Error(), printer.Service(), types.Red)
+		return
+	}
+
+	_, err = clusterManager.GetConfigMapOrErr(serviceModel.Name()+"-config", serviceModel.Namespace())
 	if err != nil {
 		clusterManager.CreateConfigMap(data.generateConfigMap(serviceModel), serviceModel.Namespace())
 	}

@@ -58,6 +58,9 @@ func main() {
 	var serviceModule *serviceManager.ServiceManager
 	if m, err := util.LoadData[serviceManager.ServiceManager](types.Services); err == nil {
 		serviceModule = &m
+		for _, service := range serviceModule.Services {
+			service.InitNonSavedFields()
+		}
 	} else {
 		serviceModule = serviceManager.NewServiceManager()
 	}

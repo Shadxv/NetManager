@@ -5,10 +5,13 @@ import (
 	"NetManager/pkg/interfaces"
 	"NetManager/pkg/types"
 	"context"
+	"fmt"
+	"io"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -63,6 +66,22 @@ func (manager *ClusterManager) GetDefaultNamespace() string {
 	return manager.namespace.Name
 }
 
+func (manager *ClusterManager) CreateNamespace(name string) error {
+	_, err := manager.clientset.CoreV1().Namespaces().Get(context.Background(), name, metav1.GetOptions{})
+	if err != nil {
+		newNamespace := &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: name,
+			},
+		}
+		_, err = manager.clientset.CoreV1().Namespaces().Create(context.Background(), newNamespace, metav1.CreateOptions{})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (manager *ClusterManager) CreateDeployment(deployment *appsv1.Deployment, namespace string) *appsv1.Deployment {
 	createdDeployment, err := manager.clientset.AppsV1().Deployments(namespace).Create(context.Background(), deployment, metav1.CreateOptions{})
 	if err != nil {
@@ -108,7 +127,7 @@ func (manager *ClusterManager) GetDeploymentOrErr(name string, namespace string)
 func (manager *ClusterManager) CreateStatefulSet(statefulset *appsv1.StatefulSet, namespace string) *appsv1.StatefulSet {
 	createdStatefulSet, err := manager.clientset.AppsV1().StatefulSets(namespace).Create(context.Background(), statefulset, metav1.CreateOptions{})
 	if err != nil {
-		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
+		manager.printer.PrintColored(fmt.Sprintf(err.Error()+" | namespace: %s", namespace), manager.service, types.Red)
 		return nil
 	}
 	return createdStatefulSet
@@ -150,7 +169,7 @@ func (manager *ClusterManager) GetStatefulSetOrErr(name string, namespace string
 func (manager *ClusterManager) CreateService(service *corev1.Service, namespace string) *corev1.Service {
 	createdService, err := manager.clientset.CoreV1().Services(namespace).Create(context.Background(), service, metav1.CreateOptions{})
 	if err != nil {
-		manager.printer.PrintColored(err.Error(), manager.service, types.Red)
+		manager.printer.PrintColored(fmt.Sprintf(err.Error()+" | namespace: %s", namespace), manager.service, types.Red)
 		return nil
 	}
 	return createdService
@@ -297,6 +316,22 @@ func (manager *ClusterManager) GetPodsOrErr(labelSelector string, namespace stri
 	}
 
 	return pods.Items, nil
+}
+
+func (manager *ClusterManager) GetPodLogs(podName string, namespace string) (io.ReadCloser, error) {
+	return manager.clientset.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{
+		Follow: true,
+	}).Stream(context.Background())
+}
+
+func (manager *ClusterManager) WatchPods(labelSelector string, namespace string) (watch.Interface, error) {
+	return manager.clientset.CoreV1().Pods(namespace).Watch(context.Background(), metav1.ListOptions{
+		LabelSelector: labelSelector,
+	})
+}
+
+func (manager *ClusterManager) DeletePod(name string, namespace string) error {
+	return manager.clientset.CoreV1().Pods(namespace).Delete(context.Background(), name, metav1.DeleteOptions{})
 }
 
 func (manager *ClusterManager) GetNodes() ([]corev1.Node, error) {
