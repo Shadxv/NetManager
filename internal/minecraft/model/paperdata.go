@@ -138,7 +138,7 @@ func (data *PaperData) generateStatefulSet(serviceModel interfaces.ServiceModel)
 								},
 								{
 									Name:  "GROUP_NAME",
-									Value: data.GroupNameField,
+									Value: "dreammc",
 								},
 								{
 									Name:  "SERVICE_NAME",

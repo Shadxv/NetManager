@@ -144,7 +144,7 @@ func (data *VelocityData) generateStatefulSet(serviceModel interfaces.ServiceMod
 								},
 								{
 									Name:  "GROUP_NAME",
-									Value: data.GroupNameField,
+									Value: "dreammc", // Later change to config value
 								},
 								{
 									Name:  "SERVICE_NAME",
@@ -200,7 +200,8 @@ func (data *VelocityData) generateService(serviceModel interfaces.ServiceModel) 
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},
-			Type: corev1.ServiceTypeNodePort,
+			Type:                  corev1.ServiceTypeNodePort,
+			ExternalTrafficPolicy: corev1.ServiceExternalTrafficPolicyTypeLocal,
 		},
 	}
 }

@@ -77,6 +77,8 @@ func (manager *ServiceManager) Init(moduleManager *module.Manager) {
 
 	if !manager.Exists("redis") && manager.clusterManager != nil {
 		redisModel.CreateNewRedisService(manager.printer, manager.configManager.GetRedisConfig(), manager, manager.clusterManager)
+	} else {
+		manager.GetService("redis").Deploy(manager.printer, manager.clusterManager)
 	}
 
 	if !manager.Exists("mongodb") {
@@ -128,6 +130,9 @@ func (manager *ServiceManager) handlePodUpdate(pod *corev1.Pod, eventType string
 
 	service := manager.GetService(serviceName)
 	if service == nil {
+		return
+	}
+	if service.PodInstances() == nil {
 		return
 	}
 
@@ -399,6 +404,21 @@ func (manager *ServiceManager) buidlUrlForServiceJar(service interfaces.ServiceM
 	}
 }
 
+func (manager *ServiceManager) buildRunCommand(service interfaces.ServiceModel) string {
+	var cmd string
+	switch service.ServiceType() {
+	case types.Paper:
+		cmd = `CMD ["java", "-jar", "-Xmx4G", "server.jar", "--nogui"]`
+		break
+	case types.Velocity:
+		cmd = `CMD ["java", "-jar", "-Xmx4G", "server.jar"]`
+		break
+	default:
+		return ""
+	}
+	return cmd
+}
+
 func (manager *ServiceManager) createDockerfile(service interfaces.ServiceModel, path string) bool {
 	dockerfileContent := fmt.Sprintf(`
 FROM eclipse-temurin:21-jre
@@ -406,8 +426,8 @@ WORKDIR /dreammc
 COPY %s-default/ /dreammc/
 COPY %s/ /dreammc/
 RUN echo "eula=true" > eula.txt
-CMD ["java", "-jar", "-Xmx4G", "server.jar", "--nogui"]
-`, strings.ToLower(service.ServiceType()), service.Name())
+%s
+`, strings.ToLower(service.ServiceType()), service.Name(), manager.buildRunCommand(service))
 
 	out, err := os.Create(path)
 	if err != nil {

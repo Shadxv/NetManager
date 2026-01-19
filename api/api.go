@@ -37,7 +37,7 @@ func NewServer(wg *sync.WaitGroup) *Server {
 	return s
 }
 
-func (s *Server) routes() {
+func (s *Server) routes(jwtSecret string) {
 	s.router.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
@@ -48,7 +48,7 @@ func (s *Server) routes() {
 	}))
 
 	s.router.Route("/gateway", func(r chi.Router) {
-		r.Mount("/v1", controllers.NewV1(s.moduleManager, s.printer, s.service).Router())
+		r.Mount("/v1", controllers.NewV1(s.moduleManager, s.printer, s.service, jwtSecret).Router())
 	})
 
 }
@@ -63,8 +63,17 @@ func (s *Server) Init(moduleManager *module.Manager) {
 	}
 	s.printer = printer
 
-	s.routes()
+	configManager, err := module.GetTypedModule[interfaces.ConfigManager](moduleManager, types.Config)
+	if err != nil {
+		s.printer.PrintColored("ConfigManager not found", s.service, types.Red)
+		s.status = types.Disabled
+		return
+	}
+	jwtSecret := configManager.GetMainConfig().GetJWTSecret()
 
+	s.routes(jwtSecret)
+
+	// SSE Setup
 	svcManager, err := module.GetTypedModule[*serviceManager.ServiceManager](moduleManager, types.Services)
 	if err == nil {
 		sseServer := sse.NewServer()

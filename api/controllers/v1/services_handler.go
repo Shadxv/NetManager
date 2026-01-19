@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"NetManager/api/auth"
 	"NetManager/internal/kubernetes"
 	minecraftModel "NetManager/internal/minecraft/model"
 	"NetManager/internal/module"
@@ -11,6 +12,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type ServiceHandler struct {
@@ -18,7 +20,6 @@ type ServiceHandler struct {
 	printer        interfaces.Printer
 	serviceManager interfaces.ServiceManager
 	clusterManager interfaces.ClusterManager
-	r              *chi.Mux
 	service        interfaces.Service
 }
 
@@ -64,39 +65,46 @@ type PaperData struct {
 	Build   int    `json:"build"`
 }
 
-func NewServiceHandler(moduleManager *module.Manager, printer interfaces.Printer, service interfaces.Service) *ServiceHandler {
-	return &ServiceHandler{
-		moduleManager: moduleManager,
-		printer:       printer,
-		r:             chi.NewRouter(),
-		service:       service,
-	}
+type StatsResponse struct {
+	TotalServices   int `json:"totalServices"`
+	RunningServices int `json:"runningServices"`
+	TotalPods       int `json:"totalPods"`
+	NonRunningPods  int `json:"nonRunningPods"`
 }
 
-func (sh *ServiceHandler) Router() *chi.Mux {
-	serviceManager, err := module.GetTypedModule[interfaces.ServiceManager](sh.moduleManager, types.Services)
-	if err != nil {
-		return sh.r
+func NewServiceHandler(moduleManager *module.Manager, printer interfaces.Printer, service interfaces.Service) *ServiceHandler {
+	sh := &ServiceHandler{
+		moduleManager: moduleManager,
+		printer:       printer,
+		service:       service,
 	}
-	sh.serviceManager = serviceManager
+
+	serviceManager, err := module.GetTypedModule[interfaces.ServiceManager](sh.moduleManager, types.Services)
+	if err == nil {
+		sh.serviceManager = serviceManager
+	}
 
 	k8sClient, err := module.GetTypedModule[*kubernetes.Client](sh.moduleManager, types.Kubernetes)
 	if err == nil {
 		sh.clusterManager = k8sClient.ClusterManager()
 	}
 
-	sh.r.Get("/", sh.handleListServices)
-	sh.r.Get("/{name}", sh.handleServiceDetails)
-	sh.r.Delete("/{name}", sh.handleDeleteService)
-	sh.r.Post("/{name}/start", sh.handleStartService)
-	sh.r.Post("/{name}/stop", sh.handleStopService)
-	sh.r.Post("/{name}/restart", sh.handleRestartService)
-	sh.r.Post("/{name}/pod/{id}/stop", sh.handleStopPod)
-	sh.r.Post("/create", sh.handleCreateService)
-	sh.r.Post("/{name}/build", sh.handleBuildVersion)
-	sh.r.Patch("/{name}/version", sh.handleChangeVersion)
+	return sh
+}
 
-	return sh.r
+func (sh *ServiceHandler) RegisterRoutes(r chi.Router) {
+	r.Get("/stats", sh.handleStats)
+
+	r.With(auth.Authorize(auth.READ_SERVICES)).Get("/", sh.handleListServices)
+	r.With(auth.Authorize(auth.READ_SERVICES)).Get("/{name}", sh.handleServiceDetails)
+	r.With(auth.Authorize(auth.DELETE_SERVICES)).Delete("/{name}", sh.handleDeleteService)
+	r.With(auth.Authorize(auth.MANAGE_SERVICES_STATE)).Post("/{name}/start", sh.handleStartService)
+	r.With(auth.Authorize(auth.MANAGE_SERVICES_STATE)).Post("/{name}/stop", sh.handleStopService)
+	r.With(auth.Authorize(auth.MANAGE_SERVICES_STATE)).Post("/{name}/restart", sh.handleRestartService)
+	r.With(auth.Authorize(auth.MANAGE_SERVICES_STATE)).Post("/{name}/pod/{id}/stop", sh.handleStopPod)
+	r.With(auth.Authorize(auth.CREATE_NEW_SERVICES)).Post("/create", sh.handleCreateService)
+	r.With(auth.Authorize(auth.UPDATE_SERVICES)).Post("/{name}/build", sh.handleBuildVersion)
+	r.With(auth.Authorize(auth.UPDATE_SERVICES)).Patch("/{name}/version", sh.handleChangeVersion)
 }
 
 func (sh *ServiceHandler) handleListServices(w http.ResponseWriter, r *http.Request) {
@@ -117,6 +125,34 @@ func (sh *ServiceHandler) handleListServices(w http.ResponseWriter, r *http.Requ
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
+		sh.printer.PrintColored("API JSON Error: "+err.Error(), sh.service, types.Red)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+}
+
+func (sh *ServiceHandler) handleStats(w http.ResponseWriter, r *http.Request) {
+	services := sh.serviceManager.GetServices()
+	stats := StatsResponse{}
+
+	for _, svc := range services {
+		if svc.ServiceType() == types.Paper || svc.ServiceType() == types.Velocity {
+			stats.TotalServices++
+			if svc.Status() == types.Running {
+				stats.RunningServices++
+			}
+
+			for _, pod := range svc.PodInstances() {
+				stats.TotalPods++
+				if pod.Status() != string(corev1.PodRunning) {
+					stats.NonRunningPods++
+				}
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
 		sh.printer.PrintColored("API JSON Error: "+err.Error(), sh.service, types.Red)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
@@ -182,7 +218,7 @@ func (sh *ServiceHandler) handleStartService(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	service.Start(sh.printer, sh.clusterManager)
+	service.Deploy(sh.printer, sh.clusterManager)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -217,7 +253,7 @@ func (sh *ServiceHandler) handleRestartService(w http.ResponseWriter, r *http.Re
 	}
 
 	service.Stop(sh.printer, sh.clusterManager)
-	service.Start(sh.printer, sh.clusterManager)
+	service.Deploy(sh.printer, sh.clusterManager)
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -299,6 +335,9 @@ func (sh *ServiceHandler) handleCreateService(w http.ResponseWriter, r *http.Req
 			http.Error(w, "Invalid data for Velocity service", http.StatusBadRequest)
 			return
 		}
+		if velocityData.Port < 30000 || velocityData.Port > 32767 {
+			http.Error(w, "Invalid port for Velocity service", http.StatusBadRequest)
+		}
 		data = minecraftModel.VelocityData{
 			GroupNameField:      req.Name,
 			VersionField:        velocityData.Version,
@@ -314,8 +353,18 @@ func (sh *ServiceHandler) handleCreateService(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	sh.serviceManager.AddNewService(req.Name, req.Type, serviceData)
-	w.WriteHeader(http.StatusCreated)
+	serviceModel := sh.serviceManager.AddNewService(req.Name, req.Type, serviceData)
+	result := ServiceBaseInfo{
+		Name:   serviceModel.Name(),
+		Type:   serviceModel.ServiceType(),
+		Status: serviceModel.Status(),
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		sh.printer.PrintColored("API JSON Error: "+err.Error(), sh.service, types.Red)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (sh *ServiceHandler) handleBuildVersion(w http.ResponseWriter, r *http.Request) {

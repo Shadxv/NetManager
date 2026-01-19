@@ -11,12 +11,14 @@ import (
 type MainConfig struct {
 	Name            string `json:"service-name"`
 	ServerGroupName string `json:"server-group-name"`
+	JWTSecret       string `json:"jwt-secret"`
 }
 
 func NewDefaultMainConfig() *MainConfig {
 	return &MainConfig{
 		Name:            "netmanager-service",
 		ServerGroupName: "dreammc",
+		JWTSecret:       "change-me-please-to-something-secure",
 	}
 }
 
@@ -38,4 +40,8 @@ func (config *MainConfig) GetName() string {
 
 func (config *MainConfig) GetServerGroupName() string {
 	return config.ServerGroupName
+}
+
+func (config *MainConfig) GetJWTSecret() string {
+	return config.JWTSecret
 }

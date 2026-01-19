@@ -87,6 +87,15 @@ func (s *Server) Run() {
 									}
 									s.sendToClient(client, msg)
 								}
+								statusMsg := Message{
+									ServiceName: client.serviceName,
+									PodName:     pod.Name(),
+									Type:        "pod_update",
+									Payload: map[string]string{
+										"status": pod.Status(),
+									},
+								}
+								s.sendToClient(client, statusMsg)
 								break
 							}
 						}
